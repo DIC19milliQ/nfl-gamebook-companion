@@ -6,13 +6,13 @@ NFL公式Gamebook PDFを、見逃し配信向けの第二画面、1プレーず�
 
 ## 3つの体験
 
-- **WATCH** — 現在位置を手動で同期し、Quarter、Clock、Down & Distance、Field Position、Drive、Playerを素早く確認。検索も現在位置までに制限できます。
-- **REPLAY** — 次の結果を隠したまま、状況と簡易フィールドを見て `NEXT PLAY` で1プレーずつ進行。Drive終了時に要約を表示します。
+- **WATCH ALONG** — 見逃し映像へQuarter / Clockで手動同期する第二画面です。現在状況、直近Play、Current Play / Driveの実関与Player、検索を素早く確認します。
+- **GAMEBOOK REPLAY** — 映像なしで、次の結果を隠したまま `NEXT PLAY` で進行します。固定された両Team陣地、攻撃方向、Ball Position、First-down marker、Drive終了要約を表示します。
 - **EXPLORE** — Game Flow、Drives、Play-by-Play、Players、Team Statsを相互に行き来できます。
 
 Spoiler Freeがオンの間、最終スコア、未来の得点、未来のDrive、未来のPlay、未来のPlayer関連プレーは現在のプレーカーソルより先を表示しません。進行中Driveの最終結果と、未来を含むBox Stats / Snap Count / Team Statsもロックします。
 
-Play descriptionは全画面で `EN / JA` を共有できます。JAは外部翻訳を使わず、構造化されたPlay種別とNFL定型文法からローカルで組み立て、解釈できない文は英語原文へ戻します。
+Play descriptionは全画面で `EN / JA` を共有できます。JAは外部翻訳を使わず、主動作、関与Player、Penalty、守備注記、Ball event、Scoring / Drive、Reviewへ分解した意味データから組み立てます。解釈不能な要素は捨てず、英語原文またはraw noteとして保持します。
 
 ## 起動方法
 
@@ -58,8 +58,9 @@ npm run check     # test + build
 Gamebook PDF
   → PDF.js（文字列 + X/Y座標）
   → セクション検出 / 行復元 / 表列分離
+  → Play semantic parser（Action / Participants / Penalties / Events / State transition）
   → GameData（Teams / Scoring / Drives / Plays / Players / Snaps / Stats）
-  → React UI（WATCH / REPLAY / EXPLORE）
+  → React UI（WATCH ALONG / GAMEBOOK REPLAY / EXPLORE）
 ```
 
 - **クライアント完結**: サーバー処理や外部APIが不要な静的SPAです。
@@ -67,6 +68,10 @@ Gamebook PDF
 - **baseline許容付き行復元**: PDF.jsがフォントごとに保持する約0.75ptのbaseline差を、実際の行間より十分小さい1pt許容で同じ表行へ復元します。
 - **見出しベースのセクション検出**: ページ番号ではなく `Final Team Statistics`、`Ball Possession And Drive Chart`、`Play By Play` などの見出しで対象を探します。
 - **PBP状態機械**: Quarter、Drive開始、Down/Distance行、折返し行、Penalty/Review追記を順に結合します。
+- **1 Play = 状態変化**: `stateBefore / stateAfter` と、formation、main action、end position、yards、participants、penalties、fumble/recovery、scoring、raw annotationsを保持します。
+- **情報を失わないJA**: Main Playだけでなく、PenaltyのTeam / Player / Type / Yards / enforcement / disposition / No Play、括弧内の守備関与、角括弧のQB hit、XP / Drive summaryを独立表示します。
+- **Roster統合**: Starterだけでなく、左右のSubstitutions / Did Not Playを行折返し後に復元し、Stats / Defense / Snap / PBP由来PlayerへPositionを統合します。
+- **missingと0を分離**: PDFにPlaytime Percentageがなければsection availabilityを`false`として保持し、UIは0%を推定せず`N/A`を表示します。
 - **raw保持**: 全ページの復元テキストと各プレーの元行を `GameData.source.rawPages` / `Play.rawText` に保持します。
 - **関連付け**: Drive Chartのチーム別連番をPBPのDrive開始へ対応させ、選手表記をBox Stats、守備スタッツ、Snap Count、関与プレーへ統合します。
 
@@ -74,7 +79,9 @@ Gamebook PDF
 
 - `src/parser/pdf.ts` — PDF.jsによる座標付き文字抽出
 - `src/parser/gamebook.ts` — NFL Gamebookの構造化と関連付け
+- `src/parser/playText.ts` — Play本文の意味イベント抽出
 - `src/playDescription.ts` — APIを使わないEN/JA Playレンダラー
+- `src/field.ts` — 固定Team陣地と攻撃方向・line-to-gainの座標モデル
 - `src/types.ts` — GameDataスキーマ
 - `src/App.tsx` — 3体験とSpoiler境界
 - `tests/gamebook.fixture.test.ts` — 実Gamebook回帰テスト
@@ -93,13 +100,17 @@ Gamebook PDF
 - Drive → Plays、Player → Stats / Snaps / Plays
 - 解析後validation（Team、Score row、左右Player/Position/Snap/Team Stats、Drive/PBP対応）と `complete / partial` 状態
 - Position group（QB、RB/FB、WR、TE、OL、DL、LB、DB、Specialists）とName順の切替
+- Play participant role（Passer / Target / Rusher / Tackler / QB Hit / Penalty / Kicker等）
+- section availability（Snap sectionなし、rowなし、実値を区別）
+- Penalty / bracket注記 / Play semantic coverageのvalidation
 
 ## Parserの既知の制限
 
 - V1は今回と同じNFL Gamebookレイアウトを対象にしています。過去年や別生成系で列位置・見出し・文字埋め込み方式が大きく異なるPDFは警告または部分抽出になる可能性があります。
-- すべての自然言語プレーを完全に意味解析するものではありません。曖昧なPenalty、Replay、複合イベントはraw descriptionを優先します。
+- すべての自然言語プレーを完全に意味解析するものではありません。laterals、複数回のturnover、公式訂正が連結された複合Playはraw description / raw review noteを優先します。
 - Team略称、フィールド位置、Drive対応は現在の32 NFLチーム名と標準的なNFL表記を前提にしています。
-- JA rendererはPass、Rush、Scramble、Sack、Turnover、Field Goal、Punt、Kickoff等の頻出構文を対象とし、複雑なPenalty / Replay / lateral等は誤訳せず英語原文へフォールバックします。
+- 括弧はPlay文脈からTacklerまたはDefensive involvement、角括弧はNFL Gamebook表記に従いQB hitとして扱います。曖昧な注記は別の意味へ推定せずraw noteに残します。
+- 固定フィールドはVisitor側陣地を左、Home側陣地を右に置く「Team territory view」です。Gamebookからスタジアムの実方位・Quarterごとのside switchingを完全復元した表示ではありません。
 - スキャン画像だけのPDFにOCRは行いません。
 
 ## 回帰テスト
@@ -116,7 +127,10 @@ fixtureから直接、次を検証しています。
 - Cowboys 17–7 Seahawks、Total Net Yards 338 / 156、両側QB Stats、Drive/PBP
 - Titans 19–13 49ers、Total Net Yards 279 / 322、A.Martinez 51 / 66%、K.Rourke 26 / 34%
 - 片側Snapを意図的に欠落させた場合に `partial` / `snaps-one-sided` となること
-- JA定型レンダリングと未知構文の英語fallback
+- Pass complete / incomplete、rush、no gain、scramble、sack、kneel、spike、TD、FG / XP、punt / kickoff、timeout
+- accepted / declined / offsetting / No Play Penalty、enforcement位置、括弧Tackler、角括弧QB hit、fumble/recovery、Scoring Drive summary
+- 固定Team fieldのGoal Line、攻撃方向、First-down marker座標
+- 未知構文の英語fallbackと、Penalty / bracketの未抽出validation
 
 ## セキュリティ / プライバシー
 

@@ -18,6 +18,7 @@ import type {
   TeamId,
   TeamStat,
 } from "../types";
+import { parsePlayDetails } from "./playText";
 
 const PLAYER_RE = /\b[A-Z][a-z]?\.[A-Z][A-Za-z'-]*(?:-[A-Za-z]+)*/g;
 const PLAYER_EXACT_RE = /^[A-Z][a-z]?\.[A-Z][A-Za-z'-]*(?:-[A-Za-z]+)*$/;
@@ -216,6 +217,13 @@ function fieldPosition(yardLine: string, possession: TeamId) {
   return match[1] === possession ? yard : 100 - yard;
 }
 
+function refreshPlayDetails(play: Play, teams: [Team, Team]) {
+  play.noPlay = /No Play/i.test(play.description);
+  play.kind = playKind(play.description);
+  play.yards = yardsFromDescription(play.description);
+  play.details = parsePlayDetails(play.description, play.possession, teams);
+}
+
 function parsePlays(pages: RawPage[], teams: [Team, Team]) {
   const teamNameMap = new Map(teams.map((team) => [team.name, team.id]));
   const firstPbpIndex = pages.findIndex((page) => /First Quarter\s*\nPlay By Play/.test(page.text));
@@ -261,6 +269,15 @@ function parsePlays(pages: RawPage[], teams: [Team, Team]) {
           noPlay: false,
           playerIds: playerNames.map((name) => makePlayerId("", name)),
           fieldPosition: fieldPosition(match[3], possession),
+          details: parsePlayDetails(description, possession, teams),
+          stateBefore: {
+            quarter,
+            clock: normalizedClock(match[4]),
+            down: number(match[1]),
+            distance: match[2].toLowerCase() === "goal" ? "Goal" : number(match[2]),
+            ballPosition: match[3],
+            possession,
+          },
         };
         plays.push(play);
         lastPlay = play;
@@ -270,14 +287,16 @@ function parsePlays(pages: RawPage[], teams: [Team, Team]) {
       if (lastPlay && isContinuation) {
         lastPlay.description = `${lastPlay.description} ${text}`.replace(/\s+/g, " ").trim();
         lastPlay.rawText = `${lastPlay.rawText}\n${text}`;
-        lastPlay.noPlay = /No Play/i.test(lastPlay.description);
-        lastPlay.kind = playKind(lastPlay.description);
-        lastPlay.yards = yardsFromDescription(lastPlay.description);
+        refreshPlayDetails(lastPlay, teams);
         const names = [...new Set(lastPlay.description.match(PLAYER_RE) ?? [])];
         lastPlay.playerIds = names.map((name) => makePlayerId("", name));
       }
     }
   }
+  plays.forEach((play, index) => {
+    const next = plays[index + 1];
+    if (next) play.stateAfter = { ...next.stateBefore };
+  });
   return { plays, driveStarts };
 }
 
@@ -372,6 +391,22 @@ function parseStarterRows(page: RawPage, teams: [Team, Team], players: Map<strin
         player.starter = true;
       }
     });
+  }
+}
+
+function parseRosterRows(page: RawPage, teams: [Team, Team], players: Map<string, PlayerDraft>) {
+  const substitutions = page.lines.find((line) => line.text.includes("Substitutions"));
+  const notActive = page.lines.find((line) => line.text.includes("Not Active"));
+  if (!substitutions || !notActive) return;
+  const rows = page.lines.filter((line) => line.y < substitutions.y && line.y > notActive.y).sort((a, b) => b.y - a.y);
+  for (const side of [0, 1] as const) {
+    const text = rows.map((line) => sideTokens(line, page, side).join(" ")).join(" ").replace(/\s+/g, " ");
+    const matches = [...text.matchAll(/\b([A-Z]{1,3})\s+\d+\s+([A-Z][a-z]?\.[A-Za-z'-]+(?: [A-Z][A-Za-z'-]+)?)/g)];
+    for (const match of matches) {
+      if (!POSITION_RE.test(match[1])) continue;
+      const player = playerDraft(players, teams[side].id, match[2]);
+      player.position = player.position ?? match[1];
+    }
   }
 }
 
@@ -490,15 +525,24 @@ function linkPlayers(players: Map<string, PlayerDraft>, plays: Play[], teams: [T
     byName.set(player.name, list);
   }
   for (const play of plays) {
-    const names = [...new Set(play.description.match(PLAYER_RE) ?? [])];
+    const semanticNames = play.details.participants.map((participant) => participant.name);
+    const names = [...new Set([...semanticNames, ...(play.description.match(PLAYER_RE) ?? [])])];
     const resolved: string[] = [];
     for (const name of names) {
-      const candidates = byName.get(name) ?? [];
-      let player = candidates.find((candidate) => candidate.teamId === play.possession);
+      let candidates = byName.get(name) ?? [];
+      if (!candidates.length) candidates = [...players.values()].filter((candidate) => candidate.name.startsWith(`${name} `) && play.description.includes(candidate.name));
+      const semantic = play.details.participants.find((participant) => participant.name === name);
+      let player = semantic?.teamId ? candidates.find((candidate) => candidate.teamId === semantic.teamId) : undefined;
+      if (!player) player = candidates.find((candidate) => candidate.teamId === play.possession);
       if (!player) player = candidates[0];
-      if (!player) player = playerDraft(players, play.possession || teams[0].id, name);
+      if (!player) player = playerDraft(players, semantic?.teamId ?? play.possession ?? teams[0].id, name);
       if (!player.playIds.includes(play.id)) player.playIds.push(play.id);
       resolved.push(player.id);
+      play.details.participants.filter((participant) => participant.name === name && (!participant.teamId || participant.teamId === player!.teamId)).forEach((participant) => {
+        participant.name = player!.name;
+        participant.teamId = player!.teamId;
+        participant.playerId = player!.id;
+      });
     }
     play.playerIds = resolved;
   }
@@ -520,6 +564,7 @@ function validateParse(
   drives: Drive[],
   plays: Play[],
   players: Player[],
+  sections: GameData["source"]["sections"],
 ): ParseValidation {
   const issues: ParseValidationIssue[] = [];
   const add = (issue: ParseValidationIssue) => issues.push(issue);
@@ -527,6 +572,9 @@ function validateParse(
   const positionCoverageByTeam: Record<TeamId, number> = {};
   const snapCountByTeam: Record<TeamId, number> = {};
   const teamStatValueCountByTeam: Record<TeamId, number> = {};
+  const structuredPlayCount = plays.filter((play) => play.details.parseStatus !== "raw").length;
+  const rawPlayCount = plays.length - structuredPlayCount;
+  const penaltyEventCount = plays.reduce((sum, play) => sum + play.details.penalties.length, 0);
 
   const scoreRowsComplete = teams.map((team) => {
     const label = team.homeAway === "visitor" ? "VISITOR:" : "HOME:";
@@ -556,8 +604,7 @@ function validateParse(
     if (!plays.some((play) => play.possession === team.id)) add({ code: "pbp-team-missing", severity: "error", section: "play-by-play", teamId: team.id, message: `${team.shortName} possession could not be linked in Play-by-Play.` });
   });
 
-  const snapSectionPresent = pages.some((page) => page.text.includes("Playtime Percentage"));
-  if (snapSectionPresent) {
+  if (sections.playtimePercentage) {
     const [visitorSnaps, homeSnaps] = teams.map((team) => snapCountByTeam[team.id]);
     if ((visitorSnaps === 0) !== (homeSnaps === 0)) {
       const failed = visitorSnaps === 0 ? teams[0] : teams[1];
@@ -573,10 +620,17 @@ function validateParse(
     add({ code: "positions-one-sided", severity: "error", section: "players", teamId: failed.id, message: `${failed.shortName} positions are disproportionately missing compared with the other team.` });
   }
 
+  const sourcePenaltyCount = plays.reduce((sum, play) => sum + [...play.description.matchAll(/\bPENALTY on\b/gi)].length, 0);
+  if (penaltyEventCount < sourcePenaltyCount) add({ code: "penalties-unparsed", severity: "error", section: "play-by-play", message: `${sourcePenaltyCount - penaltyEventCount} penalty event(s) exist in Play-by-Play but were not structured; raw text is retained.` });
+  const bracketSourceCount = plays.reduce((sum, play) => sum + [...play.description.matchAll(/\[[^\]]+\]/g)].length, 0);
+  const bracketParsedCount = plays.reduce((sum, play) => sum + play.details.annotations.filter((annotation) => annotation.kind === "qb-hit").length, 0);
+  if (bracketParsedCount < bracketSourceCount) add({ code: "brackets-unparsed", severity: "warning", section: "play-by-play", message: `${bracketSourceCount - bracketParsedCount} bracket annotation(s) could not be structured; raw text is retained.` });
+  if (plays.length >= 20 && rawPlayCount / plays.length > 0.15) add({ code: "play-coverage-low", severity: "warning", section: "play-by-play", message: "Structured Play coverage is unusually low; unrecognized plays use raw Gamebook text." });
+
   return {
     status: issues.length ? "partial" : "complete",
     issues,
-    metrics: { playerCountByTeam, positionCoverageByTeam, snapCountByTeam, teamStatValueCountByTeam },
+    metrics: { playerCountByTeam, positionCoverageByTeam, snapCountByTeam, teamStatValueCountByTeam, structuredPlayCount, rawPlayCount, penaltyEventCount },
   };
 }
 
@@ -590,6 +644,7 @@ export function parseGamebookPages(pages: RawPage[], fileName = "gamebook.pdf"):
   const drives = attachDrives(parseDrives(pageContaining(pages, "Ball Possession And Drive Chart"), teams), plays, driveStarts);
   const playerMap = new Map<string, PlayerDraft>();
   parseStarterRows(summary, teams, playerMap);
+  parseRosterRows(summary, teams, playerMap);
   parseIndividualStats(pageContaining(pages, "Final Individual Statistics"), teams, playerMap);
   parseDefense(pages, teams, playerMap);
   parseSnaps(pages, teams, playerMap);
@@ -601,12 +656,22 @@ export function parseGamebookPages(pages: RawPage[], fileName = "gamebook.pdf"):
   if (!drives.length) warnings.push("Drive Chart could not be structured; raw page text is retained.");
   const unmatchedScoring = scoring.filter((score) => score.playIndex < 0).length;
   if (unmatchedScoring) warnings.push(`${unmatchedScoring} scoring plays could not be linked to Play-by-Play.`);
-  const validation = validateParse(pages, teams, teamStats, drives, plays, players);
+  const sections = {
+    scoring: pages.some((page) => page.text.includes("SCORING SUMMARY")),
+    teamStats: pages.some((page) => page.text.includes("Final Team Statistics")),
+    individualStats: pages.some((page) => page.text.includes("Final Individual Statistics")),
+    defensiveStats: pages.some((page) => page.text.includes("Final Defensive Statistics")),
+    driveChart: pages.some((page) => page.text.includes("Ball Possession And Drive Chart")),
+    playByPlay: pages.some((page) => /First Quarter\s*\nPlay By Play/.test(page.text)),
+    playtimePercentage: pages.some((page) => page.text.includes("Playtime Percentage")),
+    roster: summary.text.includes("Substitutions") || summary.text.includes("Lineups"),
+  };
+  const validation = validateParse(pages, teams, teamStats, drives, plays, players, sections);
   warnings.push(...validation.issues.map((issue) => issue.message));
   const gameMeta = parseMeta(summary, gameSummary);
   gameMeta.title = `${teams[0].name} at ${teams[1].name}`;
   return {
-    source: { fileName, pageCount: pages.length, parsedAt: new Date().toISOString(), rawPages: pages },
+    source: { fileName, pageCount: pages.length, parsedAt: new Date().toISOString(), rawPages: pages, sections },
     game: gameMeta,
     teams,
     scoring,

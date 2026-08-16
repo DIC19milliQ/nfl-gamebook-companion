@@ -27,6 +27,10 @@ describe("multiple 2026 Gamebook formats", () => {
     expect(game.drives.find((drive) => drive.id === "drive-SEA-1")).toMatchObject({ startPosition: "SEA 20", plays: 13, netYards: 80, result: "Touchdown" });
     expect(game.plays[0]).toMatchObject({ possession: "SEA", quarter: 1, clock: "14:52", yardLine: "SEA 20" });
     expect(game.plays.at(-1)?.description).toBe("J.Milton kneels to SEA 22 for -1 yards.");
+    expect(game.source.sections.playtimePercentage).toBe(false);
+    expect(game.players.find((player) => player.id === "DAL-B.Anger")?.position).toBe("P");
+    expect(game.players.find((player) => player.id === "SEA-J.Myers")?.position).toBe("K");
+    expect(game.validation.metrics.positionCoverageByTeam).toEqual({ DAL: 1, SEA: 1 });
     expect(game.validation.status).toBe("complete");
     expect(game.validation.metrics.snapCountByTeam).toEqual({ DAL: 0, SEA: 0 });
     expect(game.warnings).toEqual([]);
@@ -50,6 +54,8 @@ describe("multiple 2026 Gamebook formats", () => {
     expect(game.players.find((player) => player.id === "TEN-C.Ward")?.snaps?.offense).toEqual({ count: 22, percentage: 36 });
     expect(game.drives.find((drive) => drive.id === "drive-SF-1")).toMatchObject({ startPosition: "SF 34", plays: 9, netYards: 24, result: "Punt" });
     expect(game.plays[0]).toMatchObject({ possession: "SF", quarter: 1, clock: "14:55", yardLine: "SF 34" });
+    expect(game.source.sections.playtimePercentage).toBe(true);
+    expect(game.players.find((player) => player.id === "SF-C.Waitman")?.position).toBe("P");
     expect(game.validation.status).toBe("complete");
     expect(game.validation.metrics.positionCoverageByTeam.SF).toBe(1);
     expect(game.validation.metrics.snapCountByTeam).toEqual({ TEN: 85, SF: 55 });

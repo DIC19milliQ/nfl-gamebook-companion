@@ -42,6 +42,120 @@ export interface ScoringPlay {
   playIndex: number;
 }
 
+export type PlayActionType =
+  | "pass"
+  | "rush"
+  | "scramble"
+  | "sack"
+  | "kneel"
+  | "spike"
+  | "punt"
+  | "kickoff"
+  | "field-goal"
+  | "extra-point"
+  | "timeout"
+  | "penalty"
+  | "replay"
+  | "other";
+
+export type PlayParticipantRole =
+  | "passer"
+  | "target"
+  | "receiver"
+  | "rusher"
+  | "tackler"
+  | "defender"
+  | "qb-hit"
+  | "sacker"
+  | "interceptor"
+  | "forced-fumble"
+  | "recovery"
+  | "kicker"
+  | "punter"
+  | "returner"
+  | "holder"
+  | "snapper"
+  | "penalized"
+  | "other";
+
+export interface PlayParticipant {
+  name: string;
+  role: PlayParticipantRole;
+  teamId?: TeamId;
+  playerId?: string;
+  source: "main" | "parenthetical" | "bracket" | "penalty" | "annotation";
+  rawText?: string;
+}
+
+export interface PlayPenalty {
+  teamId?: TeamId;
+  playerName?: string;
+  type: string;
+  yards?: number;
+  enforcement?: "enforced" | "placed";
+  enforcedAt?: string;
+  status: "accepted" | "declined" | "offsetting" | "unknown";
+  noPlay: boolean;
+  automaticFirstDown: boolean;
+  rawText: string;
+}
+
+export interface PlayAnnotation {
+  kind: "formation" | "tacklers" | "defensive-involvement" | "qb-hit" | "fumble" | "replay" | "injury" | "official-marker" | "kick-crew" | "unknown";
+  rawText: string;
+  participantNames: string[];
+}
+
+export interface PlayAction {
+  type: PlayActionType;
+  actor?: string;
+  target?: string;
+  direction?: string;
+  depth?: "short" | "deep";
+  outcome?: "complete" | "incomplete" | "gain" | "loss" | "no-gain" | "touchdown" | "interception" | "fumble" | "good" | "no-good" | "fair-catch" | "out-of-bounds" | "no-play";
+  boundary?: "out-of-bounds";
+  endPosition?: string;
+  yards?: number;
+  rawText: string;
+}
+
+export interface PlayEvent {
+  type: "fumble" | "recovery" | "interception" | "touchdown" | "first-down" | "replay" | "injury";
+  actor?: string;
+  teamId?: TeamId;
+  location?: string;
+  result?: string;
+  rawText: string;
+}
+
+export interface PlayScoringDetails {
+  extraPoint?: { kicker: string; result: "good" | "no-good"; rawText: string };
+  score?: { visitor: number; home: number };
+  drive?: { plays: number; yards: number; penalties?: number; possessionTime: string; elapsed?: string };
+  rawText: string;
+}
+
+export interface PlayState {
+  quarter: number;
+  clock: string;
+  down: number;
+  distance: number | "Goal";
+  ballPosition: string;
+  possession: TeamId;
+}
+
+export interface PlayDetails {
+  formation: string[];
+  action: PlayAction;
+  participants: PlayParticipant[];
+  penalties: PlayPenalty[];
+  events: PlayEvent[];
+  annotations: PlayAnnotation[];
+  scoring?: PlayScoringDetails;
+  parseStatus: "structured" | "partial" | "raw";
+  unparsedText: string[];
+}
+
 export type PlayKind =
   | "pass"
   | "rush"
@@ -70,6 +184,9 @@ export interface Play {
   driveId?: string;
   playerIds: string[];
   fieldPosition: number | null;
+  details: PlayDetails;
+  stateBefore: PlayState;
+  stateAfter?: PlayState;
 }
 
 export interface Drive {
@@ -183,6 +300,9 @@ export interface ParseValidation {
     positionCoverageByTeam: Record<TeamId, number>;
     snapCountByTeam: Record<TeamId, number>;
     teamStatValueCountByTeam: Record<TeamId, number>;
+    structuredPlayCount: number;
+    rawPlayCount: number;
+    penaltyEventCount: number;
   };
 }
 
@@ -192,6 +312,16 @@ export interface GameData {
     pageCount: number;
     parsedAt: string;
     rawPages: RawPage[];
+    sections: {
+      scoring: boolean;
+      teamStats: boolean;
+      individualStats: boolean;
+      defensiveStats: boolean;
+      driveChart: boolean;
+      playByPlay: boolean;
+      playtimePercentage: boolean;
+      roster: boolean;
+    };
   };
   game: {
     title: string;

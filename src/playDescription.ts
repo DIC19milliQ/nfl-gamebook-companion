@@ -1,112 +1,135 @@
-import type { Play } from "./types";
+import type { Play, PlayAction, PlayParticipant } from "./types";
 
 export type DescriptionLanguage = "en" | "ja";
+export type PlaySectionKind = "main" | "defense" | "turnover" | "penalty" | "scoring" | "review" | "note";
+
+export interface RenderedPlaySection {
+  kind: PlaySectionKind;
+  label: string;
+  text: string;
+  raw?: boolean;
+}
 
 const directionJa: Record<string, string> = {
-  "short left": "左へのショート",
-  "short middle": "中央へのショート",
-  "short right": "右へのショート",
-  "deep left": "左へのディープ",
-  "deep middle": "中央へのディープ",
-  "deep right": "右へのディープ",
-  "left end": "左エンド",
-  "left tackle": "左タックル",
-  "left guard": "左ガード",
-  "up the middle": "中央",
-  "right guard": "右ガード",
-  "right tackle": "右タックル",
-  "right end": "右エンド",
+  "short left": "左へのショート", "short middle": "中央へのショート", "short right": "右へのショート",
+  "deep left": "左へのディープ", "deep middle": "中央へのディープ", "deep right": "右へのディープ",
+  "left end": "左エンド", "left tackle": "左タックル", "left guard": "左ガード", "up the middle": "中央",
+  "right guard": "右ガード", "right tackle": "右タックル", "right end": "右エンド",
 };
 
-function formationPrefix(description: string) {
-  const formations: string[] = [];
-  let rest = description.trim();
-  while (/^\([^)]+\)\s*/.test(rest)) {
-    const match = rest.match(/^\(([^)]+)\)\s*/)!;
-    if (/Shotgun/i.test(match[1])) formations.push("ショットガン");
-    else if (/No Huddle/i.test(match[1])) formations.push("ノーハドル");
-    else return null;
-    rest = rest.slice(match[0].length);
+const penaltyJa: Record<string, string> = {
+  "Defensive Pass Interference": "ディフェンシブ・パス・インターフェアランス",
+  "Offensive Pass Interference": "オフェンシブ・パス・インターフェアランス",
+  "Defensive Holding": "ディフェンシブ・ホールディング", "Offensive Holding": "オフェンシブ・ホールディング",
+  "Face Mask": "フェイスマスク", "False Start": "フォルススタート", "Delay of Game": "ディレイ・オブ・ゲーム",
+  "Intentional Grounding": "インテンショナル・グラウンディング",
+  "Ineligible Downfield Pass": "無資格レシーバーのダウンフィールド進入",
+  "Illegal Use of Hands": "イリーガル・ユース・オブ・ハンズ",
+  "Illegal Block Above the Waist": "腰より上へのイリーガルブロック", "Kickoff Out of Bounds": "キックオフのアウト・オブ・バウンズ",
+};
+
+function formationText(formations: string[]) {
+  if (!formations.length) return "";
+  const labels: Record<string, string> = { Shotgun: "ショットガン", "No Huddle": "ノーハドル", "Run formation": "ラン・フォーメーション", "Punt formation": "パント・フォーメーション", "Field Goal formation": "フィールドゴール・フォーメーション" };
+  return `${formations.map((formation) => labels[formation] ?? formation).join("／")}から、`;
+}
+
+function yardText(action: PlayAction) {
+  if (action.outcome === "no-gain" || action.yards === 0) return "ゲインなし";
+  if (action.yards === undefined) return "";
+  return action.yards < 0 ? `${Math.abs(action.yards)}ヤードのロス` : `${action.yards}ヤード獲得`;
+}
+
+const destination = (action: PlayAction) => action.endPosition ? `${action.endPosition}まで` : "";
+function direction(action: PlayAction) {
+  const key = [action.depth, action.direction].filter(Boolean).join(" ");
+  return directionJa[key] ?? (action.direction ? directionJa[action.direction] ?? action.direction : "");
+}
+function sentence(parts: (string | undefined)[]) {
+  const text = parts.filter(Boolean).join("、").replace(/、。/g, "。");
+  return /[。.!?]$/.test(text) ? text : `${text}。`;
+}
+
+function renderMain(play: Play) {
+  const action = play.details.action;
+  const formation = formationText(play.details.formation);
+  const yards = yardText(action);
+  switch (action.type) {
+    case "pass": {
+      const route = direction(action);
+      if (action.outcome === "incomplete") return sentence([`${formation}${action.actor}の${route ? `${route}パス` : "パス"}は不成功`, action.target ? `ターゲットは${action.target}` : undefined]);
+      if (action.outcome === "interception") {
+        const interceptor = play.details.participants.find((participant) => participant.role === "interceptor");
+        return sentence([`${formation}${action.actor}の${route ? `${route}パス` : "パス"}`, action.target ? `${action.target}を狙う` : undefined, `${interceptor?.name ?? "守備選手"}が${action.endPosition ? `${action.endPosition}で` : ""}インターセプト`]);
+      }
+      return sentence([`${formation}${action.actor}から${action.target ?? "レシーバー"}へ${route ? `${route}パス` : "パス"}成功`, destination(action), yards, action.boundary === "out-of-bounds" ? "アウト・オブ・バウンズ" : undefined, action.outcome === "touchdown" ? "タッチダウン" : undefined]);
+    }
+    case "rush": return sentence([`${formation}${action.actor}が${direction(action) || "中央"}をラン`, destination(action), yards, action.boundary === "out-of-bounds" ? "アウト・オブ・バウンズ" : undefined, action.outcome === "touchdown" ? "タッチダウン" : undefined]);
+    case "scramble": return sentence([`${formation}${action.actor}が${direction(action) ? `${direction(action)}へ` : ""}スクランブル`, destination(action), yards, action.boundary === "out-of-bounds" ? "アウト・オブ・バウンズ" : undefined, action.outcome === "touchdown" ? "タッチダウン" : undefined]);
+    case "sack": return sentence([`${formation}${action.actor}が${action.endPosition ? `${action.endPosition}で` : ""}サックされる`, yards]);
+    case "kneel": return sentence([`${formation}${action.actor}がニーダウン`, destination(action), yards]);
+    case "spike": return `${formation}${action.actor}がスパイクして時計を止める。`;
+    case "field-goal": return `${action.actor}の${action.yards}ヤード・フィールドゴールは${action.outcome === "good" ? "成功" : "失敗"}。`;
+    case "extra-point": return `${action.actor}のエクストラポイントは${action.outcome === "good" ? "成功" : "失敗"}。`;
+    case "punt": return sentence([`${action.actor}が${action.yards}ヤードのパント`, action.endPosition ? `${action.endPosition}へ` : undefined, action.outcome === "fair-catch" ? "フェアキャッチ" : undefined]);
+    case "kickoff": return sentence([`${action.actor}が${action.yards}ヤードのキックオフ`, action.endPosition ? `${action.endPosition}へ` : undefined]);
+    case "timeout": return action.actor ? `${action.actor}がタイムアウト。` : "ツーミニッツ・ウォーニング。";
+    case "penalty": return `${formation}スナップ前またはプレー中に反則。`;
+    case "replay": return "リプレー・レビューが行われた。";
+    default: return play.description;
   }
-  return { prefix: formations.length ? `${formations.join("・")}から、` : "", rest };
 }
 
-function yardResult(yards: string) {
-  const value = Number(yards);
-  if (!Number.isFinite(value)) return "";
-  if (value > 0) return `${value}ヤード獲得`;
-  if (value < 0) return `${Math.abs(value)}ヤードロス`;
-  return "ゲインなし";
+function namesByRole(participants: PlayParticipant[], roles: PlayParticipant["role"][]) {
+  return [...new Set(participants.filter((participant) => roles.includes(participant.role)).map((participant) => participant.name))];
 }
 
-function suffixes(text: string) {
+function defenseSection(play: Play): RenderedPlaySection | undefined {
+  const groups = [
+    ["タックル", namesByRole(play.details.participants, ["tackler"])], ["守備関与", namesByRole(play.details.participants, ["defender"])],
+    ["QBヒット", namesByRole(play.details.participants, ["qb-hit"])], ["ファンブル誘発", namesByRole(play.details.participants, ["forced-fumble"])],
+  ].filter(([, names]) => names.length) as [string, string[]][];
+  return groups.length ? { kind: "defense", label: "DEFENSE", text: groups.map(([label, names]) => `${label}: ${names.join(" / ")}`).join("。") + "。" } : undefined;
+}
+
+function turnoverSection(play: Play): RenderedPlaySection | undefined {
+  const fumble = play.details.events.find((event) => event.type === "fumble");
+  const recovery = play.details.events.find((event) => event.type === "recovery");
+  if (!fumble && !recovery) return undefined;
+  return { kind: "turnover", label: "BALL EVENT", text: sentence([fumble ? `${fumble.actor ?? "ボール保持者"}がファンブル` : undefined, recovery ? `${recovery.teamId ?? "守備"}-${recovery.actor ?? "選手"}が${recovery.location ? `${recovery.location}で` : ""}リカバー` : undefined]) };
+}
+
+function penaltySections(play: Play): RenderedPlaySection[] {
+  return play.details.penalties.map((penalty) => {
+    const translated = penaltyJa[penalty.type];
+    const name = [penalty.teamId, penalty.playerName].filter(Boolean).join("-") || "チーム／選手不明";
+    const status = penalty.status === "accepted" ? "受理" : penalty.status === "declined" ? "辞退" : penalty.status === "offsetting" ? "相殺" : "判定状態不明";
+    return { kind: "penalty", label: "PENALTY", text: sentence([`${name}に${translated ? `${translated}（${penalty.type}）` : penalty.type}`, penalty.yards !== undefined ? `${penalty.yards}ヤード` : undefined, penalty.enforcedAt ? `${penalty.enforcedAt}で${penalty.enforcement === "placed" ? "ボールを配置" : "適用"}` : undefined, status, penalty.automaticFirstDown ? "オートマチック・ファーストダウン" : undefined, penalty.noPlay ? "ノープレー" : undefined]) };
+  });
+}
+
+function scoringSection(play: Play): RenderedPlaySection | undefined {
+  const scoring = play.details.scoring;
+  if (!scoring) return undefined;
   const parts: string[] = [];
-  if (/TOUCHDOWN/i.test(text)) parts.push("タッチダウン");
-  if (/No Play/i.test(text)) parts.push("ノープレー");
-  return parts.length ? `。${parts.join("、")}` : "";
+  if (scoring.extraPoint) parts.push(`${scoring.extraPoint.kicker}のエクストラポイントは${scoring.extraPoint.result === "good" ? "成功" : "失敗"}`);
+  if (scoring.score) parts.push(`この時点のスコア ${scoring.score.visitor}–${scoring.score.home}`);
+  if (scoring.drive) parts.push(`ドライブ: ${scoring.drive.plays}プレー／${scoring.drive.yards}ヤード${scoring.drive.penalties !== undefined ? `／反則${scoring.drive.penalties}回` : ""}／${scoring.drive.possessionTime}`);
+  return { kind: "scoring", label: "SCORING / DRIVE", text: `${parts.join("。")}。` };
 }
 
-function renderPass(description: string) {
-  const formed = formationPrefix(description);
-  if (!formed) return null;
-  const { prefix, rest } = formed;
-  const incomplete = rest.match(/^([\w.'-]+) pass incomplete(?: (short|deep) (left|middle|right))?(?:, intended for ([\w.'-]+))?/i);
-  if (incomplete) {
-    const direction = incomplete[2] && incomplete[3] ? `${directionJa[`${incomplete[2].toLowerCase()} ${incomplete[3].toLowerCase()}`]}パス` : "パス";
-    const target = incomplete[4] ? `（ターゲット: ${incomplete[4]}）` : "";
-    return `${prefix}${incomplete[1]}の${direction}は不成功${target}${suffixes(rest)}`;
+export function renderPlaySections(play: Play, language: DescriptionLanguage): RenderedPlaySection[] {
+  if (language === "en") return [{ kind: "main", label: "GAMEBOOK", text: play.description, raw: true }];
+  if (play.details.parseStatus === "raw") return [{ kind: "main", label: "GAMEBOOK ORIGINAL", text: play.description, raw: true }];
+  const sections: (RenderedPlaySection | undefined)[] = [{ kind: "main", label: "MAIN PLAY", text: renderMain(play) }, defenseSection(play), turnoverSection(play), ...penaltySections(play), scoringSection(play)];
+  for (const annotation of play.details.annotations) {
+    if (annotation.kind === "replay") sections.push({ kind: "review", label: "REVIEW", text: `${annotation.rawText}（Gamebook原文を保持）`, raw: true });
+    else if (annotation.kind === "injury") sections.push({ kind: "note", label: "INJURY", text: annotation.rawText, raw: true });
+    else if (annotation.kind === "unknown") sections.push({ kind: "note", label: "RAW NOTE", text: annotation.rawText, raw: true });
   }
-  const intercepted = rest.match(/^([\w.'-]+) pass(?: (short|deep) (left|middle|right))?.*?INTERCEPTED by ([\w.'-]+) at ((?:[A-Z]{2,3} \d+)|50)/i);
-  if (intercepted) {
-    const direction = intercepted[2] && intercepted[3] ? `${directionJa[`${intercepted[2].toLowerCase()} ${intercepted[3].toLowerCase()}`]}パス` : "パス";
-    return `${prefix}${intercepted[1]}の${direction}を${intercepted[4]}が${intercepted[5]}でインターセプト${suffixes(rest)}`;
-  }
-  const complete = rest.match(/^([\w.'-]+) pass(?: (short|deep) (left|middle|right))? to ([\w.'-]+).*? for (-?\d+) yards?/i);
-  if (complete) {
-    const direction = complete[2] && complete[3] ? `${directionJa[`${complete[2].toLowerCase()} ${complete[3].toLowerCase()}`]}パス` : "パス";
-    return `${prefix}${complete[1]}から${complete[4]}へ${direction}成功、${yardResult(complete[5])}${suffixes(rest)}`;
-  }
-  return null;
-}
-
-function renderRush(description: string) {
-  const formed = formationPrefix(description);
-  if (!formed) return null;
-  const { prefix, rest } = formed;
-  const kneel = rest.match(/^([\w.'-]+) kneels .*? for (-?\d+) yards?/i);
-  if (kneel) return `${prefix}${kneel[1]}がニーダウン、${yardResult(kneel[2])}`;
-  const scramble = rest.match(/^([\w.'-]+) scrambles(?: (left|right)(?: (?:end|tackle))?| up the middle)?.*? for (-?\d+) yards?/i);
-  if (scramble) return `${prefix}${scramble[1]}がスクランブル、${yardResult(scramble[3])}${suffixes(rest)}`;
-  const run = rest.match(/^([\w.'-]+) (left end|left tackle|left guard|up the middle|right guard|right tackle|right end).*? for (-?\d+) yards?/i);
-  if (run) return `${prefix}${run[1]}が${directionJa[run[2].toLowerCase()]}をラン、${yardResult(run[3])}${suffixes(rest)}`;
-  return null;
-}
-
-function renderKick(description: string) {
-  const fieldGoal = description.match(/^([\w.'-]+) (\d+) yard field goal is (GOOD|No Good)/i);
-  if (fieldGoal) return `${fieldGoal[1]}の${fieldGoal[2]}ヤード・フィールドゴールは${fieldGoal[3].toUpperCase() === "GOOD" ? "成功" : "失敗"}`;
-  const punt = description.match(/^([\w.'-]+) punts (\d+) yards? to ((?:[A-Z]{2,3} \d+)|50)/i);
-  if (punt) return `${punt[1]}が${punt[2]}ヤードのパント、${punt[3]}へ`;
-  const kickoff = description.match(/^([\w.'-]+) kicks (\d+) yards? from ([A-Z]{2,3} \d+) to ([A-Z]{2,3} \d+|end zone)/i);
-  if (kickoff) return `${kickoff[1]}が${kickoff[3]}から${kickoff[4]}へ${kickoff[2]}ヤードのキックオフ`;
-  return null;
-}
-
-function renderOther(description: string) {
-  const sack = description.match(/^([\w.'-]+) sacked at ((?:[A-Z]{2,3} \d+)|50) for (-?\d+) yards?/i);
-  if (sack) return `${sack[1]}が${sack[2]}でサックされ、${yardResult(sack[3])}`;
-  const timeout = description.match(/^Timeout #?(\d+)? by ([A-Z]{2,3})/i);
-  if (timeout) return `${timeout[2]}が${timeout[1] ? `${timeout[1]}回目の` : ""}タイムアウト`;
-  if (/^Two-Minute Warning/i.test(description)) return "ツーミニッツ・ウォーニング";
-  return null;
+  return sections.filter((section): section is RenderedPlaySection => Boolean(section));
 }
 
 export function renderPlayDescription(play: Play, language: DescriptionLanguage) {
-  if (language === "en") return play.description;
-  const rendered = play.kind === "pass" ? renderPass(play.description) :
-    play.kind === "rush" ? renderRush(play.description) :
-    play.kind === "field-goal" || play.kind === "punt" ? renderKick(play.description) :
-    play.kind === "sack" ? renderOther(play.description) :
-    renderPass(play.description) ?? renderRush(play.description) ?? renderKick(play.description) ?? renderOther(play.description);
-  return rendered ?? play.description;
+  return renderPlaySections(play, language).map((section) => section.text).join(" ");
 }
