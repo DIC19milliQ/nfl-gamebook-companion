@@ -6,6 +6,8 @@ import type {
   PdfLine,
   Play,
   PlayKind,
+  ParseValidation,
+  ParseValidationIssue,
   Player,
   RawPage,
   ReceivingStats,
@@ -17,10 +19,42 @@ import type {
   TeamStat,
 } from "../types";
 
-const PLAYER_RE = /\b[A-Z]\.[A-Z][A-Za-z'-]*(?:-[A-Za-z]+)*/g;
+const PLAYER_RE = /\b[A-Z][a-z]?\.[A-Z][A-Za-z'-]*(?:-[A-Za-z]+)*/g;
+const PLAYER_EXACT_RE = /^[A-Z][a-z]?\.[A-Z][A-Za-z'-]*(?:-[A-Za-z]+)*$/;
+const POSITION_RE = /^(?:QB|RB|FB|WR|TE|C|G|T|OL|LT|LG|RG|RT|DL|DE|DT|NT|LB|ILB|OLB|CB|DB|S|FS|SS|K|P|LS)$/;
 const TEAM_INFO: Record<string, { id: TeamId; short: string; color: string }> = {
+  "Arizona Cardinals": { id: "ARI", short: "Cardinals", color: "#97233f" },
+  "Atlanta Falcons": { id: "ATL", short: "Falcons", color: "#a71930" },
+  "Baltimore Ravens": { id: "BAL", short: "Ravens", color: "#4f2683" },
+  "Buffalo Bills": { id: "BUF", short: "Bills", color: "#00338d" },
+  "Carolina Panthers": { id: "CAR", short: "Panthers", color: "#0085ca" },
+  "Chicago Bears": { id: "CHI", short: "Bears", color: "#c83803" },
+  "Cincinnati Bengals": { id: "CIN", short: "Bengals", color: "#fb4f14" },
+  "Cleveland Browns": { id: "CLE", short: "Browns", color: "#ff3c00" },
+  "Dallas Cowboys": { id: "DAL", short: "Cowboys", color: "#4f6d8a" },
+  "Denver Broncos": { id: "DEN", short: "Broncos", color: "#fb4f14" },
+  "Detroit Lions": { id: "DET", short: "Lions", color: "#0076b6" },
+  "Green Bay Packers": { id: "GB", short: "Packers", color: "#1f5a43" },
+  "Houston Texans": { id: "HOU", short: "Texans", color: "#03202f" },
   "Indianapolis Colts": { id: "IND", short: "Colts", color: "#2f6da3" },
+  "Jacksonville Jaguars": { id: "JAX", short: "Jaguars", color: "#0080a0" },
+  "Kansas City Chiefs": { id: "KC", short: "Chiefs", color: "#e31837" },
+  "Las Vegas Raiders": { id: "LV", short: "Raiders", color: "#7a7d80" },
+  "Los Angeles Chargers": { id: "LAC", short: "Chargers", color: "#0080c6" },
+  "Los Angeles Rams": { id: "LAR", short: "Rams", color: "#3158a6" },
+  "Miami Dolphins": { id: "MIA", short: "Dolphins", color: "#008e97" },
+  "Minnesota Vikings": { id: "MIN", short: "Vikings", color: "#4f2683" },
   "New England Patriots": { id: "NE", short: "Patriots", color: "#c83943" },
+  "New Orleans Saints": { id: "NO", short: "Saints", color: "#b2955a" },
+  "New York Giants": { id: "NYG", short: "Giants", color: "#0b4aa2" },
+  "New York Jets": { id: "NYJ", short: "Jets", color: "#34715a" },
+  "Philadelphia Eagles": { id: "PHI", short: "Eagles", color: "#267269" },
+  "Pittsburgh Steelers": { id: "PIT", short: "Steelers", color: "#c8a932" },
+  "San Francisco 49ers": { id: "SF", short: "49ers", color: "#aa0000" },
+  "Seattle Seahawks": { id: "SEA", short: "Seahawks", color: "#4b9658" },
+  "Tampa Bay Buccaneers": { id: "TB", short: "Buccaneers", color: "#b13a32" },
+  "Tennessee Titans": { id: "TEN", short: "Titans", color: "#4b92db" },
+  "Washington Commanders": { id: "WAS", short: "Commanders", color: "#8f2635" },
 };
 
 function number(value: string | undefined, fallback = 0) {
@@ -52,13 +86,29 @@ function lineTokens(line: PdfLine, minX = -Infinity, maxX = Infinity) {
     .map((item) => item.text.trim());
 }
 
+function pageSplitX(page: RawPage) {
+  return page.width / 2;
+}
+
+function sideTokens(line: PdfLine, page: RawPage, side: 0 | 1) {
+  const split = pageSplitX(page);
+  return lineTokens(line, side === 0 ? 0 : split, side === 0 ? split : page.width);
+}
+
 function parseTeams(summary: RawPage): [Team, Team] {
   const visitorLine = summary.lines.find((line) => line.text.startsWith("VISITOR:"));
   const homeLine = summary.lines.find((line) => line.text.startsWith("HOME:"));
   const parse = (line: PdfLine | undefined, homeAway: "visitor" | "home"): Team => {
-    const text = line?.text ?? "";
-    const match = text.match(/^(?:VISITOR|HOME):\s+(.+?)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+\s+(\d+)$/);
-    const name = match?.[1] ?? (homeAway === "visitor" ? "Visitor" : "Home");
+    const label = homeAway === "visitor" ? "VISITOR:" : "HOME:";
+    const nearbyItems = line ? summary.lines
+      .filter((candidate) => Math.abs(candidate.y - line.y) <= 1.25)
+      .flatMap((candidate) => candidate.items)
+      .sort((a, b) => a.x - b.x) : [];
+    const scoreItems = nearbyItems.filter((item) => item.x > summary.width / 2 && /^\d+$/.test(item.text.trim()));
+    const name = nearbyItems
+      .filter((item) => item.x < summary.width / 2 && item.text.trim() !== label)
+      .map((item) => item.text.trim())
+      .join(" ") || (homeAway === "visitor" ? "Visitor" : "Home");
     const info = TEAM_INFO[name] ?? {
       id: name.split(" ").map((word) => word[0]).join("").slice(0, 3).toUpperCase(),
       short: name.split(" ").at(-1) ?? name,
@@ -69,7 +119,7 @@ function parseTeams(summary: RawPage): [Team, Team] {
       name,
       shortName: info.short,
       homeAway,
-      score: number(match?.[2]),
+      score: number(scoreItems.at(-1)?.text),
       color: info.color,
     };
   };
@@ -181,7 +231,7 @@ function parsePlays(pages: RawPage[], teams: [Team, Team]) {
     if (quarterHeader) quarter = ["First", "Second", "Third", "Fourth"].indexOf(quarterHeader[1]) + 1;
     for (const line of page.lines) {
       const text = line.text;
-      if (!text || /Indianapolis Colts vs New England Patriots at/.test(text) || /Play By Play \d/.test(text) || /^(First|Second|Third|Fourth) Quarter$/.test(text)) continue;
+      if (!text || text.includes(`${teams[0].name} vs ${teams[1].name} at`) || /Play By Play \d/.test(text) || /^(First|Second|Third|Fourth) Quarter$/.test(text)) continue;
       const driveHeader = [...teamNameMap.entries()].find(([name]) => text.startsWith(`${name} at `));
       if (driveHeader) {
         possession = driveHeader[1];
@@ -190,7 +240,7 @@ function parsePlays(pages: RawPage[], teams: [Team, Team]) {
         lastPlay = undefined;
         continue;
       }
-      if (/ continued\.$/.test(text) || /^END OF QUARTER/.test(text) || /^(Score|Poss|Time|First Downs|Efficiencies)\b/.test(text) || /^(Indianapolis Colts|New England Patriots) \d+ \d+:\d+/.test(text)) continue;
+      if (/ continued\.$/.test(text) || /^END OF QUARTER/.test(text) || /^(Score|Poss|Time|First Downs|Efficiencies)\b/.test(text) || (teams.some((team) => text.startsWith(`${team.name} `)) && /\d+\s+\d+:\d+/.test(text))) continue;
       const match = text.match(/^(\d+)-(\d+|Goal)-((?:[A-Z]{2,3}\s+\d+)|50)\s+\((:?\d{0,2}:\d{2})\)\s+(.+)$/i);
       if (match) {
         const description = match[5].trim();
@@ -309,14 +359,18 @@ function playerDraft(map: Map<string, PlayerDraft>, teamId: TeamId, name: string
 }
 
 function parseStarterRows(page: RawPage, teams: [Team, Team], players: Map<string, PlayerDraft>) {
-  const rows = page.lines.filter((line) => line.y <= 523 && line.y >= 403);
+  const lineupHeader = page.lines.find((line) => line.text.includes("Offense") && line.text.includes("Defense"));
+  const substitutions = page.lines.find((line) => line.y < (lineupHeader?.y ?? Infinity) && line.text.includes("Substitutions"));
+  const rows = page.lines.filter((line) => line.y < (lineupHeader?.y ?? Infinity) && line.y > (substitutions?.y ?? -Infinity));
   for (const line of rows) {
-    const matches = [...line.text.matchAll(/\b([A-Z]{1,3})\s+\d+\s+([A-Z]\.[A-Za-z'-]+(?:-[A-Za-z]+)?)/g)];
-    matches.forEach((match, index) => {
-      const team = index < 2 ? teams[0] : teams[1];
-      const player = playerDraft(players, team.id, match[2]);
-      player.position = player.position ?? match[1];
-      player.starter = true;
+    ([0, 1] as const).forEach((side) => {
+      const text = sideTokens(line, page, side).join(" ");
+      const matches = [...text.matchAll(/\b([A-Z]{1,3})\s+\d+\s+([A-Z][a-z]?\.[A-Za-z'-]+(?:-[A-Za-z]+)?)/g)];
+      for (const match of matches) {
+        const player = playerDraft(players, teams[side].id, match[2]);
+        player.position = player.position ?? match[1];
+        player.starter = true;
+      }
     });
   }
 }
@@ -333,10 +387,10 @@ function parseIndividualStats(page: RawPage | undefined, teams: [Team, Team], pl
   for (const range of ranges) {
     const lines = page.lines.filter((line) => line.y < range.top && line.y > range.bottom);
     for (const line of lines) {
-      for (const [teamIndex, minX, maxX] of [[0, 0, 306], [1, 306, 620]] as const) {
-        const tokens = lineTokens(line, minX, maxX);
-        if (!tokens[0]?.match(PLAYER_RE) || tokens[0] === "Total" || tokens.length < range.columns) continue;
-        const player = playerDraft(players, teams[teamIndex].id, tokens[0]);
+      for (const side of [0, 1] as const) {
+        const tokens = sideTokens(line, page, side);
+        if (!PLAYER_EXACT_RE.test(tokens[0] ?? "") || tokens.length < range.columns) continue;
+        const player = playerDraft(players, teams[side].id, tokens[0]);
         if (range.name === "rushing") {
           player.rushing = {
             attempts: number(tokens[1]), yards: number(tokens[2]), average: number(tokens[3]),
@@ -377,8 +431,8 @@ function parseDefense(pages: RawPage[], teams: [Team, Team], players: Map<string
   }
 }
 
-function parseSnapUnit(line: PdfLine, from: number, to: number): SnapUnit | undefined {
-  const tokens = line.items.filter((item) => item.x >= from && item.x < to && item.text.trim()).map((item) => item.text.trim());
+function parseSnapUnit(items: PdfLine["items"], from: number, to: number): SnapUnit | undefined {
+  const tokens = items.filter((item) => item.x >= from && item.x < to && item.text.trim()).map((item) => item.text.trim());
   const count = tokens.find((token) => /^\d+$/.test(token));
   const percentage = tokens.find((token) => /^\d+%$/.test(token));
   if (!count || !percentage) return undefined;
@@ -388,20 +442,40 @@ function parseSnapUnit(line: PdfLine, from: number, to: number): SnapUnit | unde
 function parseSnaps(pages: RawPage[], teams: [Team, Team], players: Map<string, PlayerDraft>) {
   const start = pages.findIndex((page) => page.text.includes("Playtime Percentage"));
   if (start < 0) return;
+  const headerPage = pages[start];
+  const headerLine = headerPage.lines.find((line) =>
+    line.items.filter((item) => item.text.trim() === "Offense").length === 2 &&
+    line.items.filter((item) => item.text.trim() === "Defense").length === 2);
+  if (!headerLine) return;
+
+  const unitRanges = ([0, 1] as const).map((side) => {
+    const split = pageSplitX(headerPage);
+    const sideItems = headerLine.items.filter((item) => side === 0 ? item.x < split : item.x >= split);
+    const anchors = ["Offense", "Defense", "Special Teams"].map((label) =>
+      sideItems.find((item) => item.text.trim() === label)?.x ?? NaN);
+    return {
+      offense: [anchors[0], anchors[1]] as const,
+      defense: [anchors[1], anchors[2]] as const,
+      specialTeams: [anchors[2], side === 0 ? split : headerPage.width] as const,
+    };
+  });
+
   for (const page of pages.slice(start)) {
     for (const line of page.lines) {
-      for (const [teamIndex, nameFrom, nameTo, positionFrom, positionTo, offset] of [
-        [0, 25, 125, 125, 150, 0],
-        [1, 315, 415, 415, 441, 291],
-      ] as const) {
-        const name = valueAt(line, nameFrom, nameTo);
-        if (!name.match(PLAYER_RE)) continue;
-        const player = playerDraft(players, teams[teamIndex].id, name);
-        player.position = player.position ?? valueAt(line, positionFrom, positionTo);
+      for (const side of [0, 1] as const) {
+        const split = pageSplitX(page);
+        const items = line.items.filter((item) => side === 0 ? item.x < split : item.x >= split);
+        const nameItem = items.find((item) => PLAYER_EXACT_RE.test(item.text.trim()));
+        if (!nameItem) continue;
+        const name = nameItem.text.trim();
+        const position = items.find((item) => item.x > nameItem.x && POSITION_RE.test(item.text.trim()))?.text.trim();
+        const player = playerDraft(players, teams[side].id, name);
+        player.position = player.position ?? position;
+        const ranges = unitRanges[side];
         player.snaps = {
-          offense: parseSnapUnit(line, 150 + offset, 196 + offset),
-          defense: parseSnapUnit(line, 196 + offset, 249 + offset),
-          specialTeams: parseSnapUnit(line, 249 + offset, 310 + offset),
+          offense: parseSnapUnit(items, ...ranges.offense),
+          defense: parseSnapUnit(items, ...ranges.defense),
+          specialTeams: parseSnapUnit(items, ...ranges.specialTeams),
         };
       }
     }
@@ -439,6 +513,73 @@ function linkScoring(scoring: ScoringPlay[], plays: Play[]) {
   }
 }
 
+function validateParse(
+  pages: RawPage[],
+  teams: [Team, Team],
+  teamStats: TeamStat[],
+  drives: Drive[],
+  plays: Play[],
+  players: Player[],
+): ParseValidation {
+  const issues: ParseValidationIssue[] = [];
+  const add = (issue: ParseValidationIssue) => issues.push(issue);
+  const playerCountByTeam: Record<TeamId, number> = {};
+  const positionCoverageByTeam: Record<TeamId, number> = {};
+  const snapCountByTeam: Record<TeamId, number> = {};
+  const teamStatValueCountByTeam: Record<TeamId, number> = {};
+
+  const scoreRowsComplete = teams.map((team) => {
+    const label = team.homeAway === "visitor" ? "VISITOR:" : "HOME:";
+    const row = pages[0]?.lines.find((line) => line.text.startsWith(label));
+    return !!row && row.items.filter((item) => item.x > pages[0].width / 2 && /^\d+$/.test(item.text.trim())).length >= 6;
+  });
+  if (teams.some((team) => team.name === "Visitor" || team.name === "Home") || teams[0].id === teams[1].id) {
+    add({ code: "teams-unresolved", severity: "error", section: "game", message: "Visitor and Home teams could not both be identified." });
+  }
+  scoreRowsComplete.forEach((complete, index) => {
+    if (!complete) add({ code: "score-row-incomplete", severity: "error", section: "game", teamId: teams[index].id, message: `${teams[index].shortName} score row is incomplete.` });
+  });
+
+  teams.forEach((team) => {
+    const teamPlayers = players.filter((player) => player.teamId === team.id);
+    const positioned = teamPlayers.filter((player) => player.position).length;
+    const snapped = teamPlayers.filter((player) => player.snaps && Object.values(player.snaps).some(Boolean)).length;
+    const statValues = teamStats.filter((stat) => (team.homeAway === "visitor" ? stat.visitor : stat.home).trim()).length;
+    playerCountByTeam[team.id] = teamPlayers.length;
+    positionCoverageByTeam[team.id] = teamPlayers.length ? positioned / teamPlayers.length : 0;
+    snapCountByTeam[team.id] = snapped;
+    teamStatValueCountByTeam[team.id] = statValues;
+    if (teamPlayers.length < 5) add({ code: "players-missing", severity: "error", section: "players", teamId: team.id, message: `${team.shortName} player data is mostly missing.` });
+    if (teamPlayers.length >= 10 && positioned / teamPlayers.length < 0.25) add({ code: "positions-low", severity: "warning", section: "players", teamId: team.id, message: `${team.shortName} position coverage is unusually low.` });
+    if (statValues < 5) add({ code: "team-stats-missing", severity: "error", section: "team-stats", teamId: team.id, message: `${team.shortName} team statistics are mostly missing.` });
+    if (!drives.some((drive) => drive.teamId === team.id)) add({ code: "drives-team-missing", severity: "error", section: "drives", teamId: team.id, message: `${team.shortName} drives could not be identified.` });
+    if (!plays.some((play) => play.possession === team.id)) add({ code: "pbp-team-missing", severity: "error", section: "play-by-play", teamId: team.id, message: `${team.shortName} possession could not be linked in Play-by-Play.` });
+  });
+
+  const snapSectionPresent = pages.some((page) => page.text.includes("Playtime Percentage"));
+  if (snapSectionPresent) {
+    const [visitorSnaps, homeSnaps] = teams.map((team) => snapCountByTeam[team.id]);
+    if ((visitorSnaps === 0) !== (homeSnaps === 0)) {
+      const failed = visitorSnaps === 0 ? teams[0] : teams[1];
+      add({ code: "snaps-one-sided", severity: "error", section: "snaps", teamId: failed.id, message: `${failed.shortName} snap table was not parsed while the other team was.` });
+    } else if (visitorSnaps === 0 && homeSnaps === 0) {
+      add({ code: "snaps-missing", severity: "error", section: "snaps", message: "The Playtime Percentage section was found but no snap rows were parsed." });
+    }
+  }
+
+  const positionRates = teams.map((team) => positionCoverageByTeam[team.id]);
+  if (Math.max(...positionRates) > 0.6 && Math.min(...positionRates) < 0.25) {
+    const failed = teams[positionRates[0] < positionRates[1] ? 0 : 1];
+    add({ code: "positions-one-sided", severity: "error", section: "players", teamId: failed.id, message: `${failed.shortName} positions are disproportionately missing compared with the other team.` });
+  }
+
+  return {
+    status: issues.length ? "partial" : "complete",
+    issues,
+    metrics: { playerCountByTeam, positionCoverageByTeam, snapCountByTeam, teamStatValueCountByTeam },
+  };
+}
+
 export function parseGamebookPages(pages: RawPage[], fileName = "gamebook.pdf"): GameData {
   const summary = pageContaining(pages, "National Football League Game Summary") ?? pages[0];
   const gameSummary = pages.find((page) => page.page !== summary.page && page.text.includes("National Football League Game Summary"));
@@ -454,11 +595,14 @@ export function parseGamebookPages(pages: RawPage[], fileName = "gamebook.pdf"):
   parseSnaps(pages, teams, playerMap);
   linkPlayers(playerMap, plays, teams);
   linkScoring(scoring, plays);
+  const players = [...playerMap.values()].sort((a, b) => a.teamId.localeCompare(b.teamId) || a.name.localeCompare(b.name));
   const warnings: string[] = [];
   if (!plays.length) warnings.push("Play-by-Play could not be structured; raw page text is retained.");
   if (!drives.length) warnings.push("Drive Chart could not be structured; raw page text is retained.");
   const unmatchedScoring = scoring.filter((score) => score.playIndex < 0).length;
   if (unmatchedScoring) warnings.push(`${unmatchedScoring} scoring plays could not be linked to Play-by-Play.`);
+  const validation = validateParse(pages, teams, teamStats, drives, plays, players);
+  warnings.push(...validation.issues.map((issue) => issue.message));
   const gameMeta = parseMeta(summary, gameSummary);
   gameMeta.title = `${teams[0].name} at ${teams[1].name}`;
   return {
@@ -469,7 +613,8 @@ export function parseGamebookPages(pages: RawPage[], fileName = "gamebook.pdf"):
     teamStats,
     drives,
     plays,
-    players: [...playerMap.values()].sort((a, b) => a.teamId.localeCompare(b.teamId) || a.name.localeCompare(b.name)),
+    players,
+    validation,
     warnings,
   };
 }

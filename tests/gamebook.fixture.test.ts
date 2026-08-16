@@ -20,6 +20,8 @@ describe("2026 Colts at Patriots Gamebook", () => {
     expect(richardson?.rushing).toMatchObject({ attempts: 6, yards: 53, touchdowns: 1 });
     expect(richardson?.snaps?.offense).toEqual({ count: 27, percentage: 42 });
     expect(game.players.find((player) => player.name === "R.Leonard" && player.teamId === "IND")?.snaps?.offense).toEqual({ count: 38, percentage: 58 });
+    expect(game.players.find((player) => player.name === "T.DeVito" && player.teamId === "NE")).toMatchObject({ position: "QB", snaps: { offense: { count: 43, percentage: 59 } } });
+    expect(game.players.find((player) => player.name === "B.Morton" && player.teamId === "NE")?.snaps?.offense).toEqual({ count: 30, percentage: 41 });
 
     const firstColtsDrive = game.drives.find((drive) => drive.teamId === "IND" && drive.teamDriveNumber === 1);
     expect(firstColtsDrive).toMatchObject({ startPosition: "IND 38", plays: 5, netYards: 29, result: "Interception" });
@@ -36,6 +38,7 @@ describe("2026 Colts at Patriots Gamebook", () => {
     expect(game.scoring.every((score) => score.playIndex >= 0)).toBe(true);
     expect(game.plays.at(-1)?.description).toBe("(Shotgun) R.Leonard pass incomplete deep right.");
     expect(game.plays.filter((play) => play.description.includes("S.Shrader"))).toHaveLength(2);
+    expect(game.validation.status).toBe("complete");
     expect(game.warnings).toEqual([]);
   });
 });

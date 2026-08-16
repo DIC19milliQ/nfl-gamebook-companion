@@ -16,6 +16,8 @@ export interface PdfLine {
 
 export interface RawPage {
   page: number;
+  width: number;
+  height: number;
   text: string;
   lines: PdfLine[];
 }
@@ -163,6 +165,27 @@ export interface TeamStat {
   home: string;
 }
 
+export type ParseIssueSeverity = "warning" | "error";
+
+export interface ParseValidationIssue {
+  code: string;
+  severity: ParseIssueSeverity;
+  message: string;
+  section?: "game" | "team-stats" | "players" | "snaps" | "drives" | "play-by-play";
+  teamId?: TeamId;
+}
+
+export interface ParseValidation {
+  status: "complete" | "partial";
+  issues: ParseValidationIssue[];
+  metrics: {
+    playerCountByTeam: Record<TeamId, number>;
+    positionCoverageByTeam: Record<TeamId, number>;
+    snapCountByTeam: Record<TeamId, number>;
+    teamStatValueCountByTeam: Record<TeamId, number>;
+  };
+}
+
 export interface GameData {
   source: {
     fileName: string;
@@ -186,5 +209,6 @@ export interface GameData {
   drives: Drive[];
   plays: Play[];
   players: Player[];
+  validation: ParseValidation;
   warnings: string[];
 }
