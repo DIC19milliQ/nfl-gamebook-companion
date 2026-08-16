@@ -1,0 +1,346 @@
+import { useCallback, useMemo, useRef, useState } from "react";
+import { parseGamebook } from "./parser";
+import type { Drive, GameData, Play, Player, TeamId } from "./types";
+
+type Mode = "watch" | "replay" | "explore";
+type ExploreTab = "flow" | "drives" | "plays" | "players" | "stats";
+
+const SAMPLE_FILE = "colts-at-patriots-2026-08-13.pdf";
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const downLabel = (play?: Play) => play ? `${play.down}${["th", "st", "nd", "rd"][play.down] ?? "th"} & ${play.distance}` : "Ready";
+const resultCode = (result: string) => ({
+  Touchdown: "TD", "Field Goal": "FG", Punt: "P", Interception: "INT", Fumble: "FUM",
+  Downs: "DN", "Missed FG": "MFG", "End of Game": "END",
+}[result] ?? result.slice(0, 3).toUpperCase());
+
+function team(game: GameData, id: TeamId) {
+  return game.teams.find((candidate) => candidate.id === id)!;
+}
+
+function scoreAt(game: GameData, cursor: number) {
+  const visible = game.scoring.filter((score) => score.playIndex >= 0 && score.playIndex <= cursor);
+  const last = visible.at(-1);
+  return last ? [last.visitorScore, last.homeScore] : [0, 0];
+}
+
+function LoadingScreen({ progress, label }: { progress: number; label: string }) {
+  return (
+    <main className="loading-screen">
+      <div className="loader-mark"><span>GB</span></div>
+      <p className="eyebrow">LOCAL PDF PARSER</p>
+      <h1>Reading the game.</h1>
+      <p className="muted">{label}</p>
+      <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
+      <strong>{progress}%</strong>
+    </main>
+  );
+}
+
+function Landing({ onFile, onDemo, error }: { onFile: (file: File) => void; onDemo: () => void; error: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  return (
+    <main className="landing">
+      <header className="landing-brand"><span className="brand-box">GB</span><span>GAMEBOOK<br />COMPANION</span></header>
+      <section className="hero">
+        <div className="hero-copy">
+          <p className="eyebrow">ONE PDF. THE WHOLE GAME.</p>
+          <h1>Turn the gamebook<br />into game day.</h1>
+          <p className="hero-lede">A spoiler-safe second screen, a play-by-play replay, and a deep postgame explorer — built entirely from the NFL Gamebook PDF.</p>
+          <div className="privacy-pill"><span>●</span> Parsed on this device · no upload · no data API</div>
+        </div>
+        <div
+          className={`dropzone ${dragging ? "dragging" : ""}`}
+          onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault(); setDragging(false);
+            const file = event.dataTransfer.files[0];
+            if (file) onFile(file);
+          }}
+        >
+          <div className="pdf-glyph">PDF</div>
+          <h2>Bring a Gamebook</h2>
+          <p>Drop an NFL Gamebook PDF here or choose one from your device.</p>
+          <button className="primary-button" onClick={() => inputRef.current?.click()}>Choose PDF</button>
+          <input ref={inputRef} hidden type="file" accept="application/pdf,.pdf" onChange={(event) => event.target.files?.[0] && onFile(event.target.files[0])} />
+          <div className="or"><span />OR<span /></div>
+          <button className="text-button" onClick={onDemo}>Open Colts @ Patriots sample <span>→</span></button>
+          {error && <p className="error-message">{error}</p>}
+        </div>
+      </section>
+      <section className="experience-strip">
+        <article><b>01</b><h3>WATCH</h3><p>Sync to a replay without seeing what happens next.</p></article>
+        <article><b>02</b><h3>REPLAY</h3><p>Advance one snap at a time, straight from the book.</p></article>
+        <article><b>03</b><h3>EXPLORE</h3><p>Connect drives, players, snaps, and every play.</p></article>
+      </section>
+    </main>
+  );
+}
+
+function Scoreboard({ game, cursor, spoiler, onToggle }: { game: GameData; cursor: number; spoiler: boolean; onToggle: () => void }) {
+  const [visitorScore, homeScore] = spoiler ? scoreAt(game, cursor) : game.teams.map((item) => item.score);
+  const current = game.plays[Math.max(cursor, 0)];
+  return (
+    <div className="scoreboard-wrap">
+      <div className="scoreboard">
+        <div className="score-team visitor"><span className="team-swatch" style={{ background: game.teams[0].color }} /><div><small>AWAY</small><b>{game.teams[0].id}</b></div><strong>{visitorScore}</strong></div>
+        <div className="game-status"><span>{spoiler ? (cursor < 0 ? "PREGAME" : `Q${current?.quarter} · ${current?.clock}`) : "FINAL"}</span><small>{game.game.venue}</small></div>
+        <div className="score-team home"><strong>{homeScore}</strong><div><small>HOME</small><b>{game.teams[1].id}</b></div><span className="team-swatch" style={{ background: game.teams[1].color }} /></div>
+      </div>
+      <button className={`spoiler-toggle ${spoiler ? "on" : ""}`} onClick={onToggle} aria-pressed={spoiler}>
+        <span className="toggle-eye">{spoiler ? "◉" : "○"}</span><span><b>SPOILER FREE</b><small>{spoiler ? "Future hidden" : "Full game visible"}</small></span><i />
+      </button>
+    </div>
+  );
+}
+
+function TopBar({ game, onReset }: { game: GameData; onReset: () => void }) {
+  return (
+    <header className="topbar">
+      <button className="wordmark" onClick={onReset}><span className="brand-box">GB</span><span>GAMEBOOK<br />COMPANION</span></button>
+      <div className="game-title"><b>{game.game.title}</b><span>{game.game.date} · {game.game.location}</span></div>
+      <div className="source-badge"><span>✓</span><div><b>PDF PARSED</b><small>{game.source.pageCount} pages · local</small></div></div>
+    </header>
+  );
+}
+
+function ModeNav({ mode, onMode }: { mode: Mode; onMode: (mode: Mode) => void }) {
+  return (
+    <nav className="mode-nav" aria-label="Experience mode">
+      {(["watch", "replay", "explore"] as Mode[]).map((item) => (
+        <button key={item} className={mode === item ? "active" : ""} onClick={() => onMode(item)}><span>{item === "watch" ? "◉" : item === "replay" ? "▷" : "⌕"}</span>{item.toUpperCase()}</button>
+      ))}
+    </nav>
+  );
+}
+
+function Field({ play }: { play?: Play }) {
+  const position = play?.fieldPosition ?? 50;
+  return (
+    <div className="field" aria-label={play ? `Ball at ${play.yardLine}` : "Football field"}>
+      <div className="endzone left">{play?.possession ?? ""}</div>
+      {[10, 20, 30, 40, 50, 60, 70, 80, 90].map((yard) => <i key={yard} style={{ left: `${yard}%` }}><span>{yard <= 50 ? yard : 100 - yard}</span></i>)}
+      <div className="ball-marker" style={{ left: `${clamp(position, 2, 98)}%` }}><span /></div>
+      <div className="endzone right">{play?.possession ? "OPP" : ""}</div>
+    </div>
+  );
+}
+
+function PlayTag({ kind }: { kind: Play["kind"] }) {
+  return <span className={`play-tag ${kind}`}>{kind.replace("field-goal", "FG").toUpperCase()}</span>;
+}
+
+function PlayRow({ play, onPlayer }: { play: Play; onPlayer?: (id: string) => void }) {
+  return (
+    <article className="play-row">
+      <div className="play-stamp"><b>Q{play.quarter}</b><span>{play.clock}</span></div>
+      <div className="play-down"><b>{downLabel(play)}</b><span>{play.yardLine}</span></div>
+      <div className="play-copy"><div><PlayTag kind={play.kind} />{play.noPlay && <span className="no-play">NO PLAY</span>}</div><p>{play.description}</p>
+        {!!play.playerIds.length && onPlayer && <div className="player-links">{play.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}
+      </div>
+    </article>
+  );
+}
+
+function Locator({ game, cursor, onCursor }: { game: GameData; cursor: number; onCursor: (value: number) => void }) {
+  const play = game.plays[Math.max(0, cursor)];
+  return (
+    <div className="locator">
+      <button onClick={() => onCursor(clamp(cursor - 1, -1, game.plays.length - 1))} aria-label="Previous play">←</button>
+      <div className="locator-main"><span>GAME POSITION</span><b>{cursor < 0 ? "Before kickoff" : `Q${play.quarter} ${play.clock} · Play ${cursor + 1} of ${game.plays.length}`}</b>
+        <input aria-label="Game position" type="range" min={-1} max={game.plays.length - 1} value={cursor} onChange={(event) => onCursor(number(event.target.value))} />
+      </div>
+      <button onClick={() => onCursor(clamp(cursor + 1, -1, game.plays.length - 1))} aria-label="Next play">→</button>
+    </div>
+  );
+}
+
+function number(value: string) { return Number(value); }
+
+function WatchView({ game, cursor, spoiler, onCursor, onPlayer }: { game: GameData; cursor: number; spoiler: boolean; onCursor: (value: number) => void; onPlayer: (id: string) => void }) {
+  const current = game.plays[cursor];
+  const upcoming = game.plays[cursor + 1];
+  const drive = current?.driveId ? game.drives.find((candidate) => candidate.id === current.driveId) : undefined;
+  const [query, setQuery] = useState("");
+  const searchable = spoiler ? game.plays.slice(0, cursor + 1) : game.plays;
+  const results = query.trim() ? searchable.filter((play) => `${play.clock} ${play.yardLine} ${play.description}`.toLowerCase().includes(query.toLowerCase())).slice(0, 8) : [];
+  const visiblePlayers = game.players.filter((player) => player.teamId === current?.possession && player.playIds.some((id) => searchable.some((play) => play.id === id)))
+    .sort((a, b) => (b.snaps?.offense?.count ?? 0) - (a.snaps?.offense?.count ?? 0)).slice(0, 6);
+  return (
+    <div className="view-grid watch-view">
+      <section className="main-column">
+        <div className="section-heading"><div><p className="eyebrow">SECOND SCREEN</p><h2>WATCH</h2></div><span className="live-chip">SYNC MANUALLY</span></div>
+        <Locator game={game} cursor={cursor} onCursor={onCursor} />
+        <div className="situation-card">
+          <div className="situation-top"><span>NOW</span><div><b>{current ? `Q${current.quarter} · ${current.clock}` : "READY"}</b><small>{current ? team(game, current.possession).name : "Start when the broadcast kicks off"}</small></div><strong>{current ? downLabel(current) : "KICKOFF"}</strong></div>
+          <Field play={current ?? upcoming} />
+          {current ? <div className="current-play"><PlayTag kind={current.kind} /><p>{current.description}</p></div> : <div className="current-play waiting"><p>The first result is hidden. Tap advance when the snap happens.</p></div>}
+          <button className="advance-button" onClick={() => onCursor(clamp(cursor + 1, -1, game.plays.length - 1))}>{cursor < 0 ? "START GAME" : "ADVANCE ONE PLAY"}<span>→</span></button>
+        </div>
+        {drive && <div className="drive-ribbon"><div><span>CURRENT DRIVE</span><b>{team(game, drive.teamId).id} #{drive.teamDriveNumber}</b></div><div><span>START</span><b>{drive.startPosition}</b></div><div><span>SO FAR</span><b>{drive.playIds.filter((id) => game.plays.find((play) => play.id === id)!.index <= cursor).length} plays</b></div><div><span>BOOK RESULT</span><b className={spoiler && cursor < drive.lastPlayIndex ? "redacted" : ""}>{spoiler && cursor < drive.lastPlayIndex ? "HIDDEN" : drive.result}</b></div></div>}
+      </section>
+      <aside className="side-column">
+        <div className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Clock, player, sack, fumble…" /></div>
+        {query && <div className="search-results panel"><h3>PLAY SEARCH <span>{results.length}</span></h3>{results.map((play) => <button key={play.id} onClick={() => onCursor(play.index)}><b>Q{play.quarter} {play.clock}</b><span>{play.description}</span></button>)}{!results.length && <p className="empty">No visible plays match.</p>}</div>}
+        <div className="panel quick-panel"><h3>QUICK JUMP</h3><div className="jump-grid">{[1, 2, 3, 4].map((quarter) => <button key={quarter} onClick={() => { const index = game.plays.findIndex((play) => play.quarter === quarter); if (index >= 0) onCursor(index); }}>Q{quarter}</button>)}</div></div>
+        <div className="panel"><h3>{current ? `${team(game, current.possession).id} PLAYERS` : "PLAYERS"}</h3><div className="compact-players">{visiblePlayers.map((player) => <button key={player.id} onClick={() => onPlayer(player.id)}><span>{player.position ?? "—"}</span><b>{player.name}</b><small>{player.snaps?.offense ? `${player.snaps.offense.count} OFF snaps` : "View game stats"}</small></button>)}</div></div>
+      </aside>
+    </div>
+  );
+}
+
+function DriveSummary({ drive, game }: { drive: Drive; game: GameData }) {
+  return (
+    <div className="drive-summary">
+      <div><span>DRIVE COMPLETE</span><h3>{team(game, drive.teamId).id} · {drive.result}</h3></div>
+      <dl><div><dt>PLAYS</dt><dd>{drive.plays}</dd></div><div><dt>YARDS</dt><dd>{drive.netYards}</dd></div><div><dt>TIME</dt><dd>{drive.possessionTime}</dd></div><div><dt>END</dt><dd>{drive.endPosition}</dd></div></dl>
+    </div>
+  );
+}
+
+function ReplayView({ game, cursor, onCursor, onPlayer }: { game: GameData; cursor: number; onCursor: (value: number) => void; onPlayer: (id: string) => void }) {
+  const revealed = game.plays[cursor];
+  const next = game.plays[cursor + 1];
+  const completedDrive = revealed?.driveId ? game.drives.find((drive) => drive.id === revealed.driveId && drive.lastPlayIndex === cursor) : undefined;
+  return (
+    <div className="replay-shell">
+      <div className="section-heading replay-heading"><div><p className="eyebrow">NO VIDEO REQUIRED</p><h2>REPLAY</h2></div><span className="spoiler-seal">NEXT RESULT LOCKED</span></div>
+      <div className="replay-stage">
+        <div className="replay-scoreline"><span>PLAY {Math.max(0, cursor + 1)} / {game.plays.length}</span><div className="mini-progress"><i style={{ width: `${((cursor + 1) / game.plays.length) * 100}%` }} /></div><span>{next ? `UP NEXT · Q${next.quarter} ${next.clock}` : "GAME COMPLETE"}</span></div>
+        {revealed ? <div className="revealed-play"><span className="reveal-label">LAST PLAY</span><PlayRow play={revealed} onPlayer={onPlayer} /></div> : <div className="opening-card"><span>OPENING SNAP</span><h3>The book is closed.</h3><p>Only the pre-snap situation is visible until you advance.</p></div>}
+        {completedDrive && <DriveSummary drive={completedDrive} game={game} />}
+        {next ? <div className="next-situation">
+          <div className="next-meta"><div><span>QUARTER</span><b>Q{next.quarter}</b></div><div><span>CLOCK</span><b>{next.clock}</b></div><div><span>POSSESSION</span><b>{next.possession} BALL</b></div></div>
+          <Field play={next} />
+          <div className="down-hero"><span>{next.yardLine}</span><strong>{downLabel(next)}</strong><small>Result hidden until next play</small></div>
+          <button className="next-play-button" onClick={() => onCursor(cursor + 1)}><span>NEXT PLAY</span><i>→</i></button>
+        </div> : <div className="game-over"><span>00:00</span><h3>Game complete.</h3><button className="primary-button" onClick={() => onCursor(-1)}>Replay from kickoff</button></div>}
+        <button className="back-play" disabled={cursor < 0} onClick={() => onCursor(cursor - 1)}>← Previous play</button>
+      </div>
+    </div>
+  );
+}
+
+function FlowTab({ game, visibleDrives, onDrive }: { game: GameData; visibleDrives: Drive[]; onDrive: (drive: Drive) => void }) {
+  return (
+    <div className="flow-board">
+      <div className="flow-legend"><span><i className="score-dot" />SCORE</span><span><i className="turnover-dot" />TURNOVER</span><span><i />OTHER</span></div>
+      <div className="flow-quarters">{[1, 2, 3, 4].map((quarter) => <div key={quarter} className="flow-quarter"><h3><span>Q{quarter}</span><small>{visibleDrives.filter((drive) => drive.quarter === quarter).length} drives</small></h3><div className="flow-track">{visibleDrives.filter((drive) => drive.quarter === quarter).map((drive) => {
+        const scoring = /Touchdown|Field Goal/.test(drive.result), turnover = /Interception|Fumble|Downs/.test(drive.result);
+        return <button key={drive.id} className={scoring ? "scoring" : turnover ? "turnover" : ""} onClick={() => onDrive(drive)}><span className="flow-team">{drive.teamId}</span><b>{resultCode(drive.result)}</b><small>{drive.startClock} · {drive.plays} plays</small></button>;
+      })}</div></div>)}</div>
+    </div>
+  );
+}
+
+function DrivesTab({ game, visibleDrives, openDrive, setOpenDrive, onPlayer }: { game: GameData; visibleDrives: Drive[]; openDrive: string; setOpenDrive: (id: string) => void; onPlayer: (id: string) => void }) {
+  return <div className="drive-list">{visibleDrives.map((drive) => {
+    const open = openDrive === drive.id;
+    return <article key={drive.id} className={`drive-card ${open ? "open" : ""}`}><button className="drive-head" onClick={() => setOpenDrive(open ? "" : drive.id)}><span className="drive-number" style={{ background: team(game, drive.teamId).color }}>{drive.teamId} {drive.teamDriveNumber}</span><div><b>{drive.startClock} · {drive.startPosition}</b><small>{drive.obtained}</small></div><dl><div><dt>PLAYS</dt><dd>{drive.plays}</dd></div><div><dt>NET YDS</dt><dd>{drive.netYards}</dd></div><div><dt>TIME</dt><dd>{drive.possessionTime}</dd></div></dl><span className={`result-badge result-${drive.result.toLowerCase().replaceAll(" ", "-")}`}>{drive.result}</span><i>{open ? "−" : "+"}</i></button>{open && <div className="drive-plays">{game.plays.filter((play) => drive.playIds.includes(play.id)).map((play) => <PlayRow key={play.id} play={play} onPlayer={onPlayer} />)}</div>}</article>;
+  })}</div>;
+}
+
+function PlaysTab({ game, visiblePlays, onPlayer }: { game: GameData; visiblePlays: Play[]; onPlayer: (id: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [quarter, setQuarter] = useState(0);
+  const filtered = visiblePlays.filter((play) => (!quarter || play.quarter === quarter) && (!query || `${play.clock} ${play.yardLine} ${play.description}`.toLowerCase().includes(query.toLowerCase())));
+  return <div><div className="filter-bar"><div className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search every visible play…" /></div><div className="quarter-filter"><button className={!quarter ? "active" : ""} onClick={() => setQuarter(0)}>ALL</button>{[1,2,3,4].map((q) => <button key={q} className={quarter === q ? "active" : ""} onClick={() => setQuarter(q)}>Q{q}</button>)}</div><span>{filtered.length} plays</span></div><div className="pbp-list">{filtered.map((play) => <PlayRow key={play.id} play={play} onPlayer={onPlayer} />)}</div></div>;
+}
+
+function playerSummary(player: Player) {
+  if (player.passing) return `${player.passing.completions}/${player.passing.attempts} · ${player.passing.yards} PASS YDS`;
+  if (player.rushing) return `${player.rushing.attempts} CAR · ${player.rushing.yards} RUSH YDS`;
+  if (player.receiving) return `${player.receiving.receptions} REC · ${player.receiving.yards} REC YDS`;
+  if (player.defense) return `${player.defense.combined} TKL · ${player.defense.sacks} SACK`;
+  return "Game participant";
+}
+
+function PlayersTab({ game, onPlayer }: { game: GameData; onPlayer: (id: string) => void }) {
+  const [teamFilter, setTeamFilter] = useState<TeamId>(game.teams[0].id);
+  const [query, setQuery] = useState("");
+  const players = game.players.filter((player) => player.teamId === teamFilter && (!query || player.name.toLowerCase().includes(query.toLowerCase())))
+    .sort((a, b) => (b.snaps?.offense?.count ?? b.snaps?.defense?.count ?? 0) - (a.snaps?.offense?.count ?? a.snaps?.defense?.count ?? 0));
+  return <div><div className="filter-bar"><div className="team-filter">{game.teams.map((item) => <button key={item.id} className={teamFilter === item.id ? "active" : ""} onClick={() => setTeamFilter(item.id)}>{item.id}</button>)}</div><div className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a player…" /></div></div><div className="player-grid">{players.map((player) => <button key={player.id} className="player-card" onClick={() => onPlayer(player.id)}><div className="player-avatar">{player.position ?? "—"}</div><div><small>{player.starter ? "STARTER" : player.position ?? "ROSTER"}</small><h3>{player.name}</h3><p>{playerSummary(player)}</p></div><div className="snap-ring"><b>{player.snaps?.offense?.percentage ?? player.snaps?.defense?.percentage ?? 0}%</b><span>SNAPS</span></div></button>)}</div></div>;
+}
+
+function StatsTab({ game }: { game: GameData }) {
+  return <div className="stats-board"><div className="stats-team-head"><span>{game.teams[0].id}</span><h3>TEAM STATISTICS</h3><span>{game.teams[1].id}</span></div>{game.teamStats.map((stat) => {
+    const a = parseFloat(stat.visitor), b = parseFloat(stat.home), numeric = Number.isFinite(a) && Number.isFinite(b);
+    const max = numeric ? Math.max(Math.abs(a), Math.abs(b), 1) : 1;
+    return <div className="stat-row" key={stat.label}><b>{stat.visitor}</b><div><span>{stat.label}</span>{numeric && <div className="compare-bar"><i style={{ width: `${(Math.abs(a) / max) * 50}%` }} /><i style={{ width: `${(Math.abs(b) / max) * 50}%` }} /></div>}</div><b>{stat.home}</b></div>;
+  })}</div>;
+}
+
+function ExploreView({ game, cursor, spoiler, onPlayer }: { game: GameData; cursor: number; spoiler: boolean; onPlayer: (id: string) => void }) {
+  const [tab, setTab] = useState<ExploreTab>("flow");
+  const [openDrive, setOpenDrive] = useState("");
+  const visibleDrives = spoiler ? game.drives.filter((drive) => drive.firstPlayIndex <= cursor) : game.drives;
+  const visiblePlays = spoiler ? game.plays.slice(0, cursor + 1) : game.plays;
+  const openFromFlow = (drive: Drive) => { setOpenDrive(drive.id); setTab("drives"); };
+  const tabs: [ExploreTab, string][] = [["flow","Game Flow"],["drives","Drives"],["plays","Play-by-Play"],["players","Players"],["stats","Team Stats"]];
+  return <div className="explore-shell"><div className="section-heading"><div><p className="eyebrow">THE WHOLE BOOK, CONNECTED</p><h2>EXPLORE</h2></div><span className="data-chip">{game.plays.length} PLAYS · {game.drives.length} DRIVES · {game.players.length} PLAYERS</span></div><div className="explore-tabs">{tabs.map(([id,label]) => <button key={id} className={tab === id ? "active" : ""} onClick={() => setTab(id)}>{label}</button>)}</div>{spoiler && <div className="spoiler-notice"><span>◉</span><b>Spoiler Free is filtering Explore</b><p>Only data through the current WATCH / REPLAY position is visible.</p></div>}<div className="explore-content">{tab === "flow" && <FlowTab game={game} visibleDrives={visibleDrives} onDrive={openFromFlow} />}{tab === "drives" && <DrivesTab game={game} visibleDrives={visibleDrives} openDrive={openDrive} setOpenDrive={setOpenDrive} onPlayer={onPlayer} />}{tab === "plays" && <PlaysTab game={game} visiblePlays={visiblePlays} onPlayer={onPlayer} />}{tab === "players" && <PlayersTab game={game} onPlayer={onPlayer} />}{tab === "stats" && <StatsTab game={game} />}</div></div>;
+}
+
+function StatBlock({ label, values }: { label: string; values: [string, string][] }) {
+  return <div className="drawer-stat"><h4>{label}</h4><dl>{values.map(([key,value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></div>;
+}
+
+function PlayerDrawer({ game, playerId, cursor, spoiler, onClose }: { game: GameData; playerId: string; cursor: number; spoiler: boolean; onClose: () => void }) {
+  const player = game.players.find((candidate) => candidate.id === playerId);
+  if (!player) return null;
+  const related = game.plays.filter((play) => player.playIds.includes(play.id) && (!spoiler || play.index <= cursor));
+  return <div className="drawer-backdrop" onMouseDown={onClose}><aside className="player-drawer" onMouseDown={(event) => event.stopPropagation()}><button className="drawer-close" onClick={onClose}>×</button><div className="drawer-hero" style={{ borderColor: team(game, player.teamId).color }}><div className="player-avatar large">{player.position ?? "—"}</div><div><span>{player.teamId} · {player.starter ? "STARTER" : "GAME ROSTER"}</span><h2>{player.name}</h2><p>{playerSummary(player)}</p></div></div><div className="drawer-stats">{player.passing && <StatBlock label="PASSING" values={[["CMP/ATT",`${player.passing.completions}/${player.passing.attempts}`],["YARDS",String(player.passing.yards)],["TD–INT",`${player.passing.touchdowns}–${player.passing.interceptions}`],["RATING",String(player.passing.rating)]]} />}{player.rushing && <StatBlock label="RUSHING" values={[["ATT",String(player.rushing.attempts)],["YARDS",String(player.rushing.yards)],["AVG",String(player.rushing.average)],["TD",String(player.rushing.touchdowns)]]} />}{player.receiving && <StatBlock label="RECEIVING" values={[["REC/TGT",`${player.receiving.receptions}/${player.receiving.targets}`],["YARDS",String(player.receiving.yards)],["LONG",String(player.receiving.long)],["TD",String(player.receiving.touchdowns)]]} />}{player.defense && <StatBlock label="DEFENSE" values={[["TKL",String(player.defense.combined)],["SOLO",String(player.defense.tackles)],["SACK",String(player.defense.sacks)],["PD",String(player.defense.passesDefended)]]} />}</div>{player.snaps && <div className="snap-section"><h3>PLAYTIME</h3><div>{(["offense","defense","specialTeams"] as const).map((unit) => player.snaps?.[unit] && <article key={unit}><span>{unit === "specialTeams" ? "SPECIAL" : unit.toUpperCase()}</span><b>{player.snaps[unit]!.count}</b><small>{player.snaps[unit]!.percentage}%</small><i><em style={{ width: `${player.snaps[unit]!.percentage}%` }} /></i></article>)}</div></div>}<div className="related-plays"><h3>INVOLVED PLAYS <span>{related.length}</span></h3>{related.map((play) => <PlayRow key={play.id} play={play} />)}{!related.length && <p className="empty">No involved plays are visible at this game position.</p>}</div></aside></div>;
+}
+
+export default function App() {
+  const [game, setGame] = useState<GameData | null>(null);
+  const [mode, setMode] = useState<Mode>("watch");
+  const [spoiler, setSpoiler] = useState(true);
+  const [cursor, setCursor] = useState(-1);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [loadingLabel, setLoadingLabel] = useState("");
+  const [error, setError] = useState("");
+  const [playerId, setPlayerId] = useState("");
+
+  const loadBytes = useCallback(async (bytes: ArrayBuffer, fileName: string) => {
+    setLoading(true); setError(""); setProgress(2); setLoadingLabel("Opening the PDF…");
+    try {
+      const parsed = await parseGamebook(bytes, fileName, (current, total) => {
+        setProgress(Math.round((current / total) * 90));
+        setLoadingLabel(`Reading page ${current} of ${total}…`);
+      });
+      setProgress(100); setLoadingLabel("Linking drives, players, and plays…");
+      setGame(parsed); setCursor(-1); setMode("watch"); setSpoiler(true);
+      document.title = `${parsed.teams[0].id} @ ${parsed.teams[1].id} · Gamebook Companion`;
+    } catch (cause) {
+      console.error(cause);
+      setError(cause instanceof Error ? cause.message : "This PDF could not be parsed.");
+    } finally { setLoading(false); }
+  }, []);
+
+  const loadFile = useCallback(async (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".pdf")) { setError("Choose an NFL Gamebook PDF."); return; }
+    if (file.size > 30 * 1024 * 1024) { setError("For safety, PDFs are limited to 30 MB."); return; }
+    await loadBytes(await file.arrayBuffer(), file.name);
+  }, [loadBytes]);
+
+  const loadDemo = useCallback(async () => {
+    try {
+      setLoading(true); setProgress(1); setLoadingLabel("Loading the included Gamebook…");
+      const response = await fetch(`./${SAMPLE_FILE}`);
+      if (!response.ok) throw new Error("The included fixture is not available.");
+      await loadBytes(await response.arrayBuffer(), SAMPLE_FILE);
+    } catch (cause) {
+      setLoading(false); setError(cause instanceof Error ? cause.message : "Could not load the sample.");
+    }
+  }, [loadBytes]);
+
+  const reset = () => { setGame(null); setPlayerId(""); setCursor(-1); document.title = "Gamebook Companion"; };
+  const safeCursor = useMemo(() => game ? clamp(cursor, -1, game.plays.length - 1) : -1, [cursor, game]);
+  if (loading) return <LoadingScreen progress={progress} label={loadingLabel} />;
+  if (!game) return <Landing onFile={loadFile} onDemo={loadDemo} error={error} />;
+  return <div className="app-shell"><TopBar game={game} onReset={reset} /><Scoreboard game={game} cursor={safeCursor} spoiler={spoiler} onToggle={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner">{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No external data or AI APIs</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} onClose={() => setPlayerId("")} />}</div>;
+}
