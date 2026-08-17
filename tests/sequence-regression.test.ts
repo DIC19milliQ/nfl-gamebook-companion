@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import { GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { parseGamebook } from "../src/parser";
-import { fieldView } from "../src/field";
+import { fieldView, replayFieldView } from "../src/field";
 import { renderPlayDescription } from "../src/playDescription";
 import type { GameData, PlaySequenceEvent } from "../src/types";
 
@@ -94,5 +94,16 @@ describe("real Gamebook event sequence regressions", () => {
     const reviewed = titans.plays.find((item) => item.clock === "8:51" && item.quarter === 2)!;
     expect(kickoff.details.penalties[0]).toMatchObject({ status: "accepted", phase: "kickoff", enforcedAt: "SF 40" });
     expect(reviewed.details.penalties.map((penalty) => penalty.status).sort()).toEqual(["accepted", "declined"]);
+  });
+
+  it("builds football-specific replay views for incomplete, touchdown, and field goals", () => {
+    const incomplete = titans.plays.find((item) => item.quarter === 1 && item.clock === "6:57")!;
+    const touchdown = titans.plays.find((item) => item.quarter === 1 && item.clock === "4:46")!;
+    const fieldGoal = titans.plays.find((item) => item.quarter === 4 && item.clock === "0:51")!;
+    const missed = titans.plays.find((item) => item.quarter === 2 && item.clock === "0:18")!;
+    expect(replayFieldView(titans, incomplete)).toMatchObject({ mode: "no-movement", finalSource: "state-after", startPosition: "TEN 47", displayFinalPosition: "TEN 47", resultLabel: "INCOMPLETE" });
+    expect(replayFieldView(titans, touchdown)).toMatchObject({ mode: "touchdown", startPosition: "SF 5", displayFinalPosition: "END ZONE", displayMovementYards: 5, phases: expect.arrayContaining([expect.objectContaining({ label: "XP", result: "GOOD" }), expect.objectContaining({ label: "KICKOFF", result: "OUT OF BOUNDS", position: "SF 40" })]) });
+    expect(replayFieldView(titans, fieldGoal)).toMatchObject({ mode: "field-goal", resultLabel: "FIELD GOAL · GOOD", fieldGoal: { outcome: "good", distance: 41 } });
+    expect(replayFieldView(titans, missed)).toMatchObject({ mode: "field-goal", resultLabel: "FIELD GOAL · MISSED", fieldGoal: { outcome: "missed", distance: 61 } });
   });
 });

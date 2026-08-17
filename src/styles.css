@@ -312,7 +312,31 @@ button { cursor: pointer; }
 .official-adjustment i { position: absolute; top: 50%; right: -7px; transform: translateY(-55%); color: var(--amber); font: 28px/1 Impact, sans-serif; font-style: normal; }
 .line-of-scrimmage { position: absolute; z-index: 4; inset-block: 0; width: 2px; border-left: 2px solid #6bb7ff; }
 .line-of-scrimmage span { position: absolute; left: -11px; bottom: 4px; padding: 1px 3px; background: #173e27; color: #9fd0ff; font-size: 6px; font-weight: 900; }
-.field-result-chip { position: absolute; z-index: 9; right: 11%; top: 8px; padding: 5px 7px; border: 1px solid color-mix(in srgb, var(--possession-color) 65%, #31483c); background: #07120de6; color: var(--possession-color); font-size: 8px; font-weight: 950; letter-spacing: .08em; }
+.broadcast-situation { --situation-arrow: 17px; position: absolute; z-index: 11; top: calc(50% + 29px); min-width: 112px; height: 28px; display: flex; align-items: center; background: var(--possession-color); color: white; border: 2px solid #eff8f2; box-shadow: 0 3px 0 #07120d, 0 0 16px rgba(0,0,0,.38); text-shadow: 0 1px 2px #07120d; }
+.broadcast-situation span { align-self: stretch; display: grid; place-items: center; min-width: 38px; padding: 0 6px; border-right: 1px solid rgba(255,255,255,.55); font: 14px/1 Impact, sans-serif; letter-spacing: .06em; }
+.broadcast-situation b { padding: 0 8px; font-size: 8px; letter-spacing: .05em; white-space: nowrap; }
+.broadcast-situation i { position: absolute; top: -2px; width: 0; height: 0; border-top: 14px solid transparent; border-bottom: 14px solid transparent; filter: drop-shadow(2px 2px 0 #07120d); }
+.broadcast-situation.direction-right { transform: translateX(5px); }
+.broadcast-situation.direction-right i { right: -17px; border-left: 17px solid var(--possession-color); }
+.broadcast-situation.direction-left { transform: translateX(calc(-100% - 5px)); flex-direction: row-reverse; }
+.broadcast-situation.direction-left span { border-right: 0; border-left: 1px solid rgba(255,255,255,.55); }
+.broadcast-situation.direction-left i { left: -17px; border-right: 17px solid var(--possession-color); filter: drop-shadow(-2px 2px 0 #07120d); }
+.broadcast-situation.direction-right.edge-pinned { transform: translateX(calc(-100% - var(--situation-arrow))); }
+.broadcast-situation.direction-left.edge-pinned { transform: translateX(var(--situation-arrow)); }
+.field-play-result { position: absolute; z-index: 12; top: 8px; right: 11%; display: grid; gap: 2px; padding: 6px 9px; border: 1px solid color-mix(in srgb, var(--possession-color) 68%, white); background: #07120deb; color: var(--possession-color); text-align: right; }
+.field-play-result b { font: 17px/1 Impact, sans-serif; letter-spacing: .06em; }
+.field-play-result span { color: #d5e1da; font-size: 7px; font-weight: 850; letter-spacing: .08em; }
+.field-play-result.result-touchdown, .field-play-result.result-field-goal { left: 50%; right: auto; transform: translateX(-50%); min-width: 230px; text-align: center; border-width: 2px; }
+.field-play-result.result-touchdown b { font-size: 25px; color: var(--green); }
+.field-play-result.result-field-goal b { font-size: 22px; }
+.field-play-result.result-no-movement b { color: white; }
+.field-goal-trajectory { position: absolute; z-index: 5; top: 8%; height: 58%; pointer-events: none; }
+.field-goal-trajectory svg { width: 100%; height: 100%; overflow: visible; }
+.field-goal-trajectory path { fill: none; stroke: var(--possession-color); stroke-width: 4; stroke-dasharray: 7 4; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 5px var(--possession-color)); }
+.uprights-marker { position: absolute; z-index: 8; top: 27%; transform: translateX(-50%); display: grid; justify-items: center; gap: 3px; }
+.uprights-marker > i { position: relative; width: 22px; height: 28px; border: 3px solid var(--amber); border-bottom: 0; }
+.uprights-marker > i::after { content: ""; position: absolute; left: 50%; top: 25px; width: 3px; height: 22px; background: var(--amber); transform: translateX(-50%); }
+.uprights-marker span { margin-top: 16px; padding: 2px 4px; background: #07120d; color: var(--amber); font-size: 6px; font-weight: 900; letter-spacing: .08em; }
 .spot-marker { position: absolute; z-index: 8; top: 0; bottom: 0; width: 2px; transform: translateX(-1px); }
 .spot-marker > i { position: absolute; top: 50%; left: 50%; width: 17px; height: 17px; transform: translate(-50%, -50%); border-radius: 50%; background: #0b1712; border: 4px solid white; box-shadow: 0 0 0 2px #0b1712; }
 .spot-marker > span { position: absolute; left: 50%; width: max-content; min-width: 72px; transform: translateX(-50%); display: grid; gap: 2px; padding: 5px 7px; background: #07120d; border: 1px solid #769086; color: var(--muted); text-align: center; font-size: 6px; font-weight: 900; letter-spacing: .1em; }
@@ -324,6 +348,18 @@ button { cursor: pointer; }
 .spot-marker.play-end { border-left: 1px dashed var(--amber); }
 .spot-marker.play-end > span { top: 18px; border-color: var(--amber); color: var(--amber); }
 .spot-marker.play-end > i { width: 11px; height: 11px; border: 2px solid var(--amber); }
+.spot-marker.same-spot > span { top: 18px; border-color: white; }
+.spot-marker.same-spot > i { width: 22px; height: 22px; border: 4px solid white; box-shadow: 0 0 0 4px var(--green), 0 0 0 7px #0b1712; }
+.spot-marker.touchdown-end > span { border-color: var(--green); color: var(--green); }
+.spot-marker.touchdown-end > i { width: 22px; height: 22px; border-color: var(--green); box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 30%, transparent); }
+.replay-phases { min-height: 38px; display: flex; align-items: stretch; border: 1px solid var(--line); border-bottom: 0; background: #09130f; }
+.replay-phases div { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 7px 10px; border-right: 1px solid var(--line); }
+.replay-phases div:last-child { border-right: 0; }
+.replay-phases span { color: var(--muted); font-size: 6px; font-weight: 900; letter-spacing: .1em; }
+.replay-phases b { color: var(--text); font-size: 9px; letter-spacing: .06em; }
+.replay-phases em { margin-left: auto; color: var(--green); font-size: 8px; font-style: normal; font-weight: 900; }
+.replay-phases .phase-scrimmage { background: color-mix(in srgb, var(--green) 8%, transparent); }
+.replay-phases .phase-scrimmage b { color: var(--green); }
 .field-spot-key { min-height: 30px; display: flex; align-items: center; gap: 14px; padding: 5px 9px; border: 1px solid var(--line); background: #09130f; }
 .field-spot-key span { display: flex; align-items: center; gap: 5px; color: #afbeb6; font-size: 7px; letter-spacing: .07em; }
 .field-spot-key span i { width: 8px; height: 8px; border: 2px solid #dbe7df; border-radius: 50%; }
@@ -597,8 +633,22 @@ button { cursor: pointer; }
   .replay-result-head { align-items: flex-start; flex-direction: column; }
   .result-flags { justify-content: flex-start; }
   .field-replay { height: 205px; margin: 0 0 8px; }
+  .broadcast-situation { --situation-arrow: 14px; top: calc(50% + 25px); min-width: 91px; height: 24px; }
+  .broadcast-situation span { min-width: 31px; padding: 0 4px; font-size: 11px; }
+  .broadcast-situation b { padding: 0 5px; font-size: 6px; }
+  .broadcast-situation i { border-top-width: 12px; border-bottom-width: 12px; }
+  .broadcast-situation.direction-right i { right: -14px; border-left-width: 14px; }
+  .broadcast-situation.direction-left i { left: -14px; border-right-width: 14px; }
+  .field-play-result { right: 11%; padding: 4px 6px; }
+  .field-play-result b { font-size: 13px; }
+  .field-play-result.result-touchdown, .field-play-result.result-field-goal { min-width: 176px; }
+  .field-play-result.result-touchdown b, .field-play-result.result-field-goal b { font-size: 18px; }
+  .uprights-marker > i { width: 17px; height: 23px; }
+  .uprights-marker > i::after { top: 20px; height: 17px; }
   .spot-marker > span { min-width: 60px; padding: 4px; font-size: 5px; }
   .spot-marker > span b { font-size: 7px; }
+  .replay-phases { flex-wrap: wrap; }
+  .replay-phases div { flex: 1 1 50%; padding: 6px 7px; }
   .field-spot-key { flex-wrap: wrap; gap: 6px 12px; }
   .field-spot-key > b { margin-left: 0; }
   .movement-summary { grid-template-columns: 1fr 1fr; }

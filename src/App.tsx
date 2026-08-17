@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { parseGamebook } from "./parser";
 import { renderPlayDescription, renderPlaySections, type DescriptionLanguage } from "./playDescription";
-import { fieldView } from "./field";
+import { fieldView, replayFieldView } from "./field";
 import type { Drive, GameData, Play, PlayParticipant, Player, TeamId } from "./types";
 
 type Mode = "watch" | "replay" | "explore";
@@ -13,6 +13,7 @@ const SAMPLE_FILE = "colts-at-patriots-2026-08-13.pdf";
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const downLabel = (play?: Play) => play ? `${play.down}${["th", "st", "nd", "rd"][play.down] ?? "th"} & ${play.distance}` : "Ready";
 const situationLabel = (play?: Play) => play ? `${downLabel(play)} · ${play.yardLine}` : "Ready";
+const yardsLabel = (yards: number | null) => yards === null ? "NO ESTIMATE" : yards === 0 ? "0 YARDS" : `${yards > 0 ? "+" : ""}${yards} YARDS`;
 const resultCode = (result: string) => ({
   Touchdown: "TD", "Field Goal": "FG", Punt: "P", Interception: "INT", Fumble: "FUM",
   Downs: "DN", "Missed FG": "MFG", "End of Game": "END", "In Progress": "LIVE",
@@ -121,7 +122,7 @@ function ModeNav({ mode, onMode }: { mode: Mode; onMode: (mode: Mode) => void })
   );
 }
 
-function SituationHeader({ game, play, cursor, controls }: { game: GameData; play?: Play; cursor: number; controls?: ReactNode }) {
+function SituationHeader({ game, play, cursor, controls, showDirection = true }: { game: GameData; play?: Play; cursor: number; controls?: ReactNode; showDirection?: boolean }) {
   const [visitorScore, homeScore] = scoreAt(game, cursor);
   const possession = play ? team(game, play.possession) : undefined;
   const direction = play ? (play.possession === game.teams[0].id ? "RIGHT →" : "← LEFT") : "—";
@@ -129,7 +130,7 @@ function SituationHeader({ game, play, cursor, controls }: { game: GameData; pla
     <div className="current-situation" style={{ "--possession-team": possession?.color ?? "#8bf0a6" } as CSSProperties}>
       <div className="situation-score" aria-label={`${game.teams[0].id} ${visitorScore}, ${game.teams[1].id} ${homeScore}`}><span><i style={{ background: game.teams[0].color }} />{game.teams[0].id}</span><b>{visitorScore}<em>–</em>{homeScore}</b><span>{game.teams[1].id}<i style={{ background: game.teams[1].color }} /></span></div>
       <div className="situation-clock"><small>GAME CLOCK</small><b>{play ? `Q${play.quarter} · ${play.clock}` : "PREGAME"}</b></div>
-      <div className="situation-possession"><small>POSSESSION</small>{play ? <b><TeamMark game={game} teamId={play.possession} compact /> <span>{direction}</span></b> : <b>READY</b>}</div>
+      <div className="situation-possession"><small>POSSESSION</small>{play ? <b><TeamMark game={game} teamId={play.possession} compact /> {showDirection && <span>{direction}</span>}</b> : <b>READY</b>}</div>
       <div className="situation-down"><small>SITUATION</small><b>{play ? `${downLabel(play)} · ${play.yardLine}` : "BEFORE KICKOFF"}</b></div>
       {controls && <div className="situation-controls">{controls}</div>}
     </div>
@@ -138,16 +139,19 @@ function SituationHeader({ game, play, cursor, controls }: { game: GameData; pla
 
 function Field({ game, play, variant = "situation" }: { game: GameData; play?: Play; variant?: "situation" | "replay" }) {
   const view = fieldView(game, play);
+  const replay = replayFieldView(game, play);
   const directionTeam = play ? team(game, play.possession) : undefined;
-  const primaryEnd = view.actionEndPercent ?? view.endPercent;
-  const hasPath = variant === "replay" && view.startPercent !== null && primaryEnd !== null;
+  const primaryEnd = replay.mode === "movement" ? replay.actionEndPercent ?? replay.displayFinalPercent : replay.displayFinalPercent;
+  const hasPath = variant === "replay" && ["movement", "touchdown"].includes(replay.mode) && view.startPercent !== null && primaryEnd !== null;
   const pathLeft = hasPath ? Math.min(view.startPercent!, primaryEnd!) : 0;
   const pathWidth = hasPath ? Math.abs(primaryEnd! - view.startPercent!) : 0;
-  const hasAdjustment = variant === "replay" && view.actionEndPercent !== null && view.endPercent !== null && Math.abs(view.actionEndPercent - view.endPercent) > .1;
-  const adjustmentLeft = hasAdjustment ? Math.min(view.actionEndPercent!, view.endPercent!) : 0;
-  const adjustmentWidth = hasAdjustment ? Math.abs(view.endPercent! - view.actionEndPercent!) : 0;
+  const hasAdjustment = variant === "replay" && replay.mode === "movement" && view.actionEndPercent !== null && replay.displayFinalPercent !== null && Math.abs(view.actionEndPercent - replay.displayFinalPercent) > .1;
+  const adjustmentLeft = hasAdjustment ? Math.min(view.actionEndPercent!, replay.displayFinalPercent!) : 0;
+  const adjustmentWidth = hasAdjustment ? Math.abs(replay.displayFinalPercent! - view.actionEndPercent!) : 0;
+  const kickLeft = variant === "replay" && replay.mode === "field-goal" && view.startPercent !== null && replay.displayFinalPercent !== null ? Math.min(view.startPercent, replay.displayFinalPercent) : 0;
+  const kickWidth = variant === "replay" && replay.mode === "field-goal" && view.startPercent !== null && replay.displayFinalPercent !== null ? Math.abs(view.startPercent - replay.displayFinalPercent) : 0;
   return (
-    <div className={`field field-${variant} direction-${view.direction}`} aria-label={play ? variant === "replay" ? `${play.possession} possession, play starts at ${view.startPosition}, ${view.finalPosition ? `officially ends at ${view.finalPosition}` : "official end spot unavailable"}, attacking ${view.direction}` : `${play.possession} possession, ball at ${view.startPosition}, attacking ${view.direction}` : "Football field"} style={{ "--left-team": view.leftTeam.color, "--right-team": view.rightTeam.color, "--possession-color": directionTeam?.color ?? "#d9ff66" } as CSSProperties}>
+    <div className={`field field-${variant} direction-${view.direction} replay-mode-${replay.mode}`} aria-label={play ? variant === "replay" ? `${play.possession} possession, ${replay.downDistance}, ${replay.resultLabel ?? `play starts at ${view.startPosition}`}, attacking ${view.direction}` : `${play.possession} possession, ball at ${view.startPosition}, attacking ${view.direction}` : "Football field"} style={{ "--left-team": view.leftTeam.color, "--right-team": view.rightTeam.color, "--possession-color": directionTeam?.color ?? "#d9ff66" } as CSSProperties}>
       <div className="endzone left"><b>{view.leftTeam.id}</b><span>END ZONE</span></div>
       <div className="field-of-play">
         {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((yard) => <i key={yard} style={{ left: `${yard}%` }}><span>{yard === 0 || yard === 100 ? "G" : yard <= 50 ? yard : 100 - yard}</span></i>)}
@@ -156,11 +160,15 @@ function Field({ game, play, variant = "situation" }: { game: GameData; play?: P
       {variant === "replay" && view.startPercent !== null && <div className="line-of-scrimmage" style={{ left: `${view.startPercent}%` }}><span>LOS</span></div>}
       {variant === "situation" && play && <div className="attack-arrow" style={{ left: view.direction === "right" ? `${Math.min(view.ballPercent + 7, 84)}%` : `${Math.max(view.ballPercent - 7, 16)}%` }}><span>{view.direction === "right" ? "→" : "←"}</span></div>}
       {variant === "situation" && <div className="ball-marker" style={{ left: `${view.ballPercent}%` }}><span>{view.startPosition ?? "50"}</span></div>}
-      {hasPath && <><div className={`play-path direction-${primaryEnd! >= view.startPercent! ? "right" : "left"}`} style={{ left: `${pathLeft}%`, width: `${Math.max(pathWidth, .8)}%` }}><i>{primaryEnd! >= view.startPercent! ? "›" : "‹"}</i></div><div className="spot-marker start" style={{ left: `${view.startPercent}%` }}><i /><span>START<b>{view.startPosition}</b></span></div></>}
-      {hasAdjustment && <div className="official-adjustment" style={{ left: `${adjustmentLeft}%`, width: `${Math.max(adjustmentWidth, .8)}%` }}><i>{view.endPercent! >= view.actionEndPercent! ? "›" : "‹"}</i></div>}
+      {variant === "replay" && play && view.startPercent !== null && <div className={`broadcast-situation direction-${view.direction}${(view.direction === "right" && view.startPercent > 78) || (view.direction === "left" && view.startPercent < 22) ? " edge-pinned" : ""}`} style={{ left: `${view.startPercent}%` }}><span>{play.possession}</span><b>{replay.downDistance}</b><i /></div>}
+      {hasPath && <div className={`play-path direction-${primaryEnd! >= view.startPercent! ? "right" : "left"}`} style={{ left: `${pathLeft}%`, width: `${Math.max(pathWidth, .8)}%` }}><i>{primaryEnd! >= view.startPercent! ? "›" : "‹"}</i></div>}
+      {variant === "replay" && replay.mode === "field-goal" && view.startPercent !== null && replay.displayFinalPercent !== null && <><div className={`field-goal-trajectory direction-${view.direction}`} style={{ left: `${kickLeft}%`, width: `${Math.max(kickWidth, 1)}%` }}><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={view.direction === "right" ? "M 0 82 Q 52 3 100 42" : "M 100 82 Q 48 3 0 42"} /></svg></div><div className="uprights-marker" style={{ left: `${replay.displayFinalPercent}%` }}><i /><span>UPRIGHTS</span></div></>}
+      {variant === "replay" && view.startPercent !== null && !replay.noMovement && <div className="spot-marker start" style={{ left: `${view.startPercent}%` }}><i /><span>{replay.mode === "field-goal" ? "KICK ORIGIN" : "START"}<b>{view.startPosition}</b></span></div>}
+      {variant === "replay" && replay.noMovement && view.startPercent !== null && <div className="spot-marker same-spot" style={{ left: `${view.startPercent}%` }}><i /><span>START / FINAL<b>{view.startPosition}</b></span></div>}
+      {hasAdjustment && <div className="official-adjustment" style={{ left: `${adjustmentLeft}%`, width: `${Math.max(adjustmentWidth, .8)}%` }}><i>{replay.displayFinalPercent! >= view.actionEndPercent! ? "›" : "‹"}</i></div>}
       {variant === "replay" && view.actionEndPercent !== null && hasAdjustment && <div className="spot-marker play-end" style={{ left: `${view.actionEndPercent}%` }}><i /><span>PLAY END<b>{view.actionEndPosition}</b></span></div>}
-      {variant === "replay" && view.endPercent !== null && <div className="spot-marker end" style={{ left: `${view.endPercent}%` }}><i /><span>OFFICIAL<b>{view.finalPosition}</b></span></div>}
-      {variant === "replay" && play && <div className="field-result-chip">{view.movementYards === null ? "FINAL SPOT · NOT STATED" : `${view.movementYards >= 0 ? "+" : ""}${view.movementYards} YARDS`}</div>}
+      {variant === "replay" && !replay.noMovement && replay.mode !== "field-goal" && replay.displayFinalPercent !== null && <div className={`spot-marker end ${replay.mode === "touchdown" ? "touchdown-end" : ""}`} style={{ left: `${replay.displayFinalPercent}%` }}><i /><span>{replay.mode === "touchdown" ? "TOUCHDOWN" : "OFFICIAL"}<b>{replay.displayFinalPosition}</b></span></div>}
+      {variant === "replay" && play && <div className={`field-play-result result-${replay.mode}`}><b>{replay.resultLabel ?? yardsLabel(replay.displayMovementYards)}</b>{replay.resultDetail && <span>{replay.resultDetail}</span>}</div>}
       <div className="endzone right"><b>{view.rightTeam.id}</b><span>END ZONE</span></div>
     </div>
   );
@@ -265,14 +273,15 @@ function ReplayView({ game, cursor, language, onCursor, onPlayer }: { game: Game
   const revealed = game.plays[cursor];
   const next = game.plays[cursor + 1];
   const completedDrive = revealed?.driveId ? game.drives.find((drive) => drive.id === revealed.driveId && drive.lastPlayIndex === cursor) : undefined;
-  const view = fieldView(game, revealed);
+  const view = replayFieldView(game, revealed);
   return (
     <div className="replay-shell" data-play-anchor>
-      <SituationHeader game={game} play={revealed} cursor={cursor} controls={<div className="replay-progress"><span>PLAY {Math.max(0, cursor + 1)} / {game.plays.length}</span><i><b style={{ width: `${((cursor + 1) / game.plays.length) * 100}%` }} /></i><em>NEXT RESULT LOCKED</em></div>} />
+      <SituationHeader game={game} play={revealed} cursor={cursor} showDirection={false} controls={<div className="replay-progress"><span>PLAY {Math.max(0, cursor + 1)} / {game.plays.length}</span><i><b style={{ width: `${((cursor + 1) / game.plays.length) * 100}%` }} /></i><em>NEXT RESULT LOCKED</em></div>} />
       <div className="replay-stage">
         {revealed ? <div className="replay-result">
           <Field game={game} play={revealed} variant="replay" />
-          <div className="field-spot-key"><span><i className="key-start" />START · {view.startPosition ?? "NOT STATED"}</span>{view.actionEndPosition && view.actionEndPosition !== view.finalPosition && <span><i className="key-play-end" />PLAY END · {view.actionEndPosition}</span>}<span><i className="key-official" />OFFICIAL · {view.finalPosition ?? "NOT STATED"}</span><b>{view.movementYards === null ? "NO ESTIMATE" : `${view.movementYards >= 0 ? "+" : ""}${view.movementYards} YARDS`}</b></div>
+          {view.phases.length > 0 && <div className="replay-phases" aria-label="Scoring phases">{view.phases.map((phase) => <div key={`${phase.phase}-${phase.label}`} className={`phase-${phase.phase}`}><span>{phase.label}</span><b>{phase.result}</b>{phase.position && <em>→ {phase.position}</em>}</div>)}</div>}
+          <div className={`field-spot-key mode-${view.mode}`}><span><i className="key-start" />{view.noMovement ? "START / FINAL" : view.mode === "field-goal" ? "KICK ORIGIN" : "START"} · {view.startPosition ?? "NOT STATED"}</span>{view.mode === "movement" && view.actionEndPosition && view.actionEndPosition !== view.displayFinalPosition && <span><i className="key-play-end" />PLAY END · {view.actionEndPosition}</span>}{!view.noMovement && <span><i className="key-official" />{view.mode === "touchdown" ? "SCORING END" : view.mode === "field-goal" ? "KICK TARGET" : "OFFICIAL"} · {view.displayFinalPosition ?? "NOT STATED"}</span>}<b>{view.mode === "field-goal" ? `${view.fieldGoal?.distance ?? "—"} YDS · ${view.fieldGoal?.outcome === "good" ? "GOOD" : "MISSED"}` : yardsLabel(view.displayMovementYards)}</b></div>
           <div className="supporting-play"><div className="supporting-head"><span>SUPPORTING TEXT · EVENT ORDER</span><div className="result-flags"><PlayTag kind={revealed.kind} />{revealed.noPlay && <span className="no-play">NO PLAY</span>}{revealed.details.events.some((event) => event.type === "touchdown") && <b>TD</b>}{revealed.details.events.some((event) => event.type === "fumble" || event.type === "interception") && <b className="danger">TURNOVER EVENT</b>}{revealed.details.penalties.length > 0 && <b className="penalty-flag">PENALTY</b>}</div></div><PlayText play={revealed} language={language} />{!!revealed.playerIds.length && <div className="player-links">{revealed.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}</div>
         </div> : <div className="opening-card"><span>OPENING SNAP · RESULT LOCKED</span><Field game={game} play={next} variant="situation" /><p>Only the first pre-snap situation is visible. Press Space or → to reveal the play.</p></div>}
         {completedDrive && <DriveSummary drive={completedDrive} game={game} />}
