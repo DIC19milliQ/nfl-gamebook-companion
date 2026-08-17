@@ -73,7 +73,7 @@ describe("semantic Play parser and lossless Japanese renderer", () => {
     const item = play("(Shotgun) D.Lock pass short right to M.Foster for 5 yards, TOUCHDOWN. P6 Penalty on DAL-M.Liufau, Defensive Pass Interference, declined. J.Myers extra point is GOOD, Center-C.Stoll, Holder-M.Dickson. DAL 0 SEA 7, 13 plays, 80 yards, 2 penalties, 7:18 drive, 7:18 elapsed");
     expect(item.details.events).toContainEqual(expect.objectContaining({ type: "touchdown", actor: "M.Foster" }));
     expect(item.details.scoring).toMatchObject({ extraPoint: { kicker: "J.Myers", result: "good" }, score: { visitor: 0, home: 7 }, drive: { plays: 13, yards: 80, penalties: 2, possessionTime: "7:18" } });
-    const scoring = renderPlaySections(item, "ja").find((section) => section.kind === "scoring")?.text ?? "";
+    const scoring = renderPlaySections(item, "ja").filter((section) => section.kind === "scoring").map((section) => section.text).join(" ");
     expect(scoring).toContain("J.Myers");
     expect(scoring).toContain("13プレー");
     expect(scoring).toContain("80ヤード");
@@ -97,8 +97,17 @@ describe("semantic Play parser and lossless Japanese renderer", () => {
   it("retains replay text and safely falls back to the exact English raw text", () => {
     const reviewed = play("The Replay Official reviewed the pass completion ruling, and the play was REVERSED. D.Lock pass incomplete short right to M.Foster.");
     expect(reviewed.details.events).toContainEqual(expect.objectContaining({ type: "replay", result: "reversed" }));
-    expect(renderPlaySections(reviewed, "ja")).toContainEqual(expect.objectContaining({ kind: "review", raw: true }));
+    expect(renderPlaySections(reviewed, "ja")).toContainEqual(expect.objectContaining({ kind: "review", text: expect.stringContaining("Replay Official") }));
     const raw = "A highly unusual lateral sequence with an official correction.";
     expect(renderPlayDescription(play(raw), "ja")).toBe(raw);
+  });
+
+  it("renders the structured portion in Japanese and preserves only an unknown suffix as RAW", () => {
+    const item = play("(Shotgun) D.Lock pass incomplete short right to M.Foster. Uncatalogued sideline administration remains.");
+    expect(item.details.parseStatus).toBe("partial");
+    expect(item.details.unparsedText).toEqual(["Uncatalogued sideline administration remains."]);
+    const sections = renderPlaySections(item, "ja");
+    expect(sections).toContainEqual(expect.objectContaining({ kind: "main", text: expect.stringContaining("パスを投げるが不成功") }));
+    expect(sections).toContainEqual(expect.objectContaining({ label: "RAW / UNPARSED", text: "Uncatalogued sideline administration remains.", raw: true }));
   });
 });

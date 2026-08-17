@@ -68,8 +68,11 @@ Gamebook PDF
 - **baseline許容付き行復元**: PDF.jsがフォントごとに保持する約0.75ptのbaseline差を、実際の行間より十分小さい1pt許容で同じ表行へ復元します。
 - **見出しベースのセクション検出**: ページ番号ではなく `Final Team Statistics`、`Ball Possession And Drive Chart`、`Play By Play` などの見出しで対象を探します。
 - **PBP状態機械**: Quarter、Drive開始、Down/Distance行、折返し行、Penalty/Review追記を順に結合します。
-- **1 Play = 状態変化**: `stateBefore / stateAfter` と、formation、main action、end position、yards、participants、penalties、fumble/recovery、scoring、raw annotationsを保持します。
-- **情報を失わないJA**: Main Playだけでなく、PenaltyのTeam / Player / Type / Yards / enforcement / disposition / No Play、括弧内の守備関与、角括弧のQB hit、XP / Drive summaryを独立表示します。
+- **1 Play = 順序付き状態変化**: `stateBefore / stateAfter` に加え、原文offset順の `sequence[]`、複数の `actions[]`、phase、provisional/final ruling、確実なspot列を保持します。互換用 `action` は最終公式actionを指します。
+- **phaseとReview正規化**: scrimmage / try / kickoff / administrativeを分け、Replay前後の同一反則再掲はreview境界をまたぐsemantic一致の場合だけ1件へ統合します。原文上の再掲位置はsequenceに残します。
+- **情報を失わないJA**: event sequence順にMain Play、Penalty、Review、Timeout、Injury、XP / Drive summaryを表示し、構造化できないoffset区間だけを `RAW / UNPARSED` として原文保持します。
+- **体験を分離したField**: WATCH ALONGはPossessionと攻撃方向を強調する小型Situation Indicator、GAMEBOOK REPLAYは確定済みPlayのStart → Official Finalと移動方向を主役にします。
+- **共通キーボード操作**: WATCH ALONG / GAMEBOOK REPLAYでは `←` / `→` / `Space` でPlay移動できます。入力・ボタンへフォーカス中は発火しません。
 - **Roster統合**: Starterだけでなく、左右のSubstitutions / Did Not Playを行折返し後に復元し、Stats / Defense / Snap / PBP由来PlayerへPositionを統合します。
 - **missingと0を分離**: PDFにPlaytime Percentageがなければsection availabilityを`false`として保持し、UIは0%を推定せず`N/A`を表示します。
 - **raw保持**: 全ページの復元テキストと各プレーの元行を `GameData.source.rawPages` / `Play.rawText` に保持します。
@@ -107,7 +110,7 @@ Gamebook PDF
 ## Parserの既知の制限
 
 - V1は今回と同じNFL Gamebookレイアウトを対象にしています。過去年や別生成系で列位置・見出し・文字埋め込み方式が大きく異なるPDFは警告または部分抽出になる可能性があります。
-- すべての自然言語プレーを完全に意味解析するものではありません。laterals、複数回のturnover、公式訂正が連結された複合Playはraw description / raw review noteを優先します。
+- すべての自然言語プレーを完全に意味解析するものではありません。未知のlateralsや特殊な公式注記は、解析済みイベントを維持したまま該当区間だけをRAW表示します。
 - Team略称、フィールド位置、Drive対応は現在の32 NFLチーム名と標準的なNFL表記を前提にしています。
 - 括弧はPlay文脈からTacklerまたはDefensive involvement、角括弧はNFL Gamebook表記に従いQB hitとして扱います。曖昧な注記は別の意味へ推定せずraw noteに残します。
 - 固定フィールドはVisitor側陣地を左、Home側陣地を右に置く「Team territory view」です。Gamebookからスタジアムの実方位・Quarterごとのside switchingを完全復元した表示ではありません。

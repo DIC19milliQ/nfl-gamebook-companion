@@ -221,7 +221,7 @@ function refreshPlayDetails(play: Play, teams: [Team, Team]) {
   play.noPlay = /No Play/i.test(play.description);
   play.kind = playKind(play.description);
   play.yards = yardsFromDescription(play.description);
-  play.details = parsePlayDetails(play.description, play.possession, teams);
+  play.details = parsePlayDetails(play.description, play.possession, teams, play.yardLine);
 }
 
 function parsePlays(pages: RawPage[], teams: [Team, Team]) {
@@ -269,7 +269,7 @@ function parsePlays(pages: RawPage[], teams: [Team, Team]) {
           noPlay: false,
           playerIds: playerNames.map((name) => makePlayerId("", name)),
           fieldPosition: fieldPosition(match[3], possession),
-          details: parsePlayDetails(description, possession, teams),
+          details: parsePlayDetails(description, possession, teams, match[3]),
           stateBefore: {
             quarter,
             clock: normalizedClock(match[4]),
@@ -574,7 +574,7 @@ function validateParse(
   const teamStatValueCountByTeam: Record<TeamId, number> = {};
   const structuredPlayCount = plays.filter((play) => play.details.parseStatus !== "raw").length;
   const rawPlayCount = plays.length - structuredPlayCount;
-  const penaltyEventCount = plays.reduce((sum, play) => sum + play.details.penalties.length, 0);
+  const penaltyEventCount = plays.reduce((sum, play) => sum + play.details.penalties.reduce((count, penalty) => count + (penalty.occurrences?.length ?? 1), 0), 0);
 
   const scoreRowsComplete = teams.map((team) => {
     const label = team.homeAway === "visitor" ? "VISITOR:" : "HOME:";

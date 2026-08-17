@@ -45,6 +45,7 @@ export interface ScoringPlay {
 export type PlayActionType =
   | "pass"
   | "rush"
+  | "advance"
   | "scramble"
   | "sack"
   | "kneel"
@@ -98,6 +99,9 @@ export interface PlayPenalty {
   noPlay: boolean;
   automaticFirstDown: boolean;
   rawText: string;
+  phase?: PlayPhase;
+  occurrences?: { rawText: string; sourceStart: number; ruling: PlayRuling }[];
+  repeatedAfterReview?: boolean;
 }
 
 export interface PlayAnnotation {
@@ -117,6 +121,71 @@ export interface PlayAction {
   endPosition?: string;
   yards?: number;
   rawText: string;
+  formation?: string[];
+}
+
+export type PlayPhase = "scrimmage" | "try" | "kickoff" | "administrative";
+export type PlayRuling = "provisional" | "final" | "official";
+
+export interface PlayReviewDetails {
+  source: "team-challenge" | "replay-official";
+  teamId?: TeamId;
+  subject?: string;
+  result?: "upheld" | "reversed" | "confirmed";
+  ruling?: "stands" | "changed";
+  timeoutNumber?: number;
+  rawText: string;
+}
+
+export interface PlayInjuryUpdate {
+  teamId?: TeamId;
+  player?: string;
+  status: string;
+  rawText: string;
+}
+
+export interface PlaySpot {
+  kind: "start" | "action-end" | "fumble" | "recovery" | "enforcement" | "official-final";
+  position: string;
+  phase: PlayPhase;
+  order: number;
+  certain: boolean;
+}
+
+export type PlaySequenceType =
+  | "action"
+  | "defense"
+  | "fumble"
+  | "recovery"
+  | "penalty"
+  | "touchdown"
+  | "review"
+  | "review-result"
+  | "timeout"
+  | "injury-update"
+  | "scoring"
+  | "drive-summary"
+  | "official-marker"
+  | "kick-crew"
+  | "administrative"
+  | "raw";
+
+export interface PlaySequenceEvent {
+  id: string;
+  order: number;
+  sourceStart: number;
+  sourceEnd: number;
+  type: PlaySequenceType;
+  phase: PlayPhase;
+  ruling: PlayRuling;
+  rawText: string;
+  actionIndex?: number;
+  penaltyIndex?: number;
+  review?: PlayReviewDetails;
+  injury?: PlayInjuryUpdate;
+  participantNames?: string[];
+  location?: string;
+  result?: string;
 }
 
 export interface PlayEvent {
@@ -147,9 +216,16 @@ export interface PlayState {
 export interface PlayDetails {
   formation: string[];
   action: PlayAction;
+  actions: PlayAction[];
+  officialActionIndex: number;
   participants: PlayParticipant[];
   penalties: PlayPenalty[];
   events: PlayEvent[];
+  sequence: PlaySequenceEvent[];
+  reviews: PlayReviewDetails[];
+  injuryUpdates: PlayInjuryUpdate[];
+  spots: PlaySpot[];
+  officialEndPosition?: string;
   annotations: PlayAnnotation[];
   scoring?: PlayScoringDetails;
   parseStatus: "structured" | "partial" | "raw";
