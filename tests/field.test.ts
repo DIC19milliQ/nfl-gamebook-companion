@@ -24,4 +24,13 @@ describe("fixed-team field model", () => {
     expect(fieldView(game, seaPlay)).toMatchObject({ direction: "left", ballPercent: 13.2, firstDownPercent: 10 });
     expect(fieldView(game, dalPlay)).toMatchObject({ direction: "right", ballPercent: 74, firstDownPercent: 78.8 });
   });
+
+  it("keeps play end and official final spots distinct in both attack directions", () => {
+    const dalPlay = { ...base, id: "p3", index: 2, possession: "DAL", yardLine: "DAL 30", fieldPosition: 30, stateBefore: { ...base.stateBefore, possession: "DAL", ballPosition: "DAL 30" }, details: { ...base.details, officialEndPosition: "DAL 40", spots: [{ kind: "action-end", position: "SEA 45", phase: "scrimmage", order: 1, certain: true }, { kind: "official-final", position: "DAL 40", phase: "scrimmage", order: 2, certain: true }] } } as unknown as Play;
+    const seaPlay = { ...base, id: "p4", index: 3, possession: "SEA", yardLine: "SEA 30", fieldPosition: 70, stateBefore: { ...base.stateBefore, possession: "SEA", ballPosition: "SEA 30" }, details: { ...base.details, officialEndPosition: "SEA 40", spots: [{ kind: "action-end", position: "DAL 45", phase: "scrimmage", order: 1, certain: true }, { kind: "official-final", position: "SEA 40", phase: "scrimmage", order: 2, certain: true }] } } as unknown as Play;
+    expect(fieldView(game, dalPlay)).toMatchObject({ direction: "right", startPosition: "DAL 30", actionEndPosition: "SEA 45", finalPosition: "DAL 40", movementYards: 10 });
+    expect(fieldView(game, seaPlay)).toMatchObject({ direction: "left", startPosition: "SEA 30", actionEndPosition: "DAL 45", finalPosition: "SEA 40", movementYards: 10 });
+    expect(fieldView(game, dalPlay).actionEndPercent).toBeGreaterThan(fieldView(game, dalPlay).endPercent!);
+    expect(fieldView(game, seaPlay).actionEndPercent).toBeLessThan(fieldView(game, seaPlay).endPercent!);
+  });
 });

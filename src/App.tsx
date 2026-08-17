@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { parseGamebook } from "./parser";
 import { renderPlayDescription, renderPlaySections, type DescriptionLanguage } from "./playDescription";
 import { fieldView } from "./field";
@@ -92,29 +92,16 @@ function Landing({ onFile, onDemo, error }: { onFile: (file: File) => void; onDe
   );
 }
 
-function Scoreboard({ game, cursor, spoiler, onToggle }: { game: GameData; cursor: number; spoiler: boolean; onToggle: () => void }) {
-  const [visitorScore, homeScore] = spoiler ? scoreAt(game, cursor) : game.teams.map((item) => item.score);
-  const current = game.plays[Math.max(cursor, 0)];
-  return (
-    <div className="scoreboard-wrap">
-      <div className="scoreboard">
-        <div className="score-team visitor"><span className="team-swatch" style={{ background: game.teams[0].color }} /><div><small>VISITOR · {game.teams[0].shortName}</small><b>{game.teams[0].id}</b></div><strong>{visitorScore}</strong></div>
-        <div className="game-status"><span>{spoiler ? (cursor < 0 ? "PREGAME" : `Q${current?.quarter} · ${current?.clock}`) : "FINAL"}</span><small>{game.game.venue}</small></div>
-        <div className="score-team home"><strong>{homeScore}</strong><div><small>HOME · {game.teams[1].shortName}</small><b>{game.teams[1].id}</b></div><span className="team-swatch" style={{ background: game.teams[1].color }} /></div>
-      </div>
-      <button className={`spoiler-toggle ${spoiler ? "on" : ""}`} onClick={onToggle} aria-pressed={spoiler}>
-        <span className="toggle-eye">{spoiler ? "◉" : "○"}</span><span><b>SPOILER FREE</b><small>{spoiler ? "Future hidden" : "Full game visible"}</small></span><i />
-      </button>
-    </div>
-  );
+function SpoilerToggle({ spoiler, onToggle }: { spoiler: boolean; onToggle: () => void }) {
+  return <button className={`spoiler-toggle compact ${spoiler ? "on" : ""}`} onClick={onToggle} aria-pressed={spoiler} title={spoiler ? "Future results are hidden" : "Full game is visible"}><span className="toggle-eye">{spoiler ? "◉" : "○"}</span><b>SPOILER FREE</b><i /></button>;
 }
 
-function TopBar({ game, onReset, language, onLanguage }: { game: GameData; onReset: () => void; language: DescriptionLanguage; onLanguage: (language: DescriptionLanguage) => void }) {
+function TopBar({ game, onReset, language, onLanguage, spoiler, onSpoiler }: { game: GameData; onReset: () => void; language: DescriptionLanguage; onLanguage: (language: DescriptionLanguage) => void; spoiler: boolean; onSpoiler: () => void }) {
   return (
     <header className="topbar">
       <button className="wordmark" onClick={onReset}><span className="brand-box">GB</span><span>GAMEBOOK<br />COMPANION</span></button>
       <div className="game-title"><b>{game.game.title}</b><span>{game.game.date} · {game.game.location}</span></div>
-      <div className="topbar-actions"><LanguageToggle language={language} onLanguage={onLanguage} /><div className="source-badge"><span>✓</span><div><b>{game.validation.status === "complete" ? "PDF PARSED" : "PARTIAL PARSE"}</b><small>{game.source.pageCount} pages · local</small></div></div></div>
+      <div className="topbar-actions"><SpoilerToggle spoiler={spoiler} onToggle={onSpoiler} /><LanguageToggle language={language} onLanguage={onLanguage} /><div className="source-badge"><span>✓</span><div><b>{game.validation.status === "complete" ? "PDF PARSED" : "PARTIAL PARSE"}</b><small>{game.source.pageCount} pages · local</small></div></div></div>
     </header>
   );
 }
@@ -134,23 +121,46 @@ function ModeNav({ mode, onMode }: { mode: Mode; onMode: (mode: Mode) => void })
   );
 }
 
+function SituationHeader({ game, play, cursor, controls }: { game: GameData; play?: Play; cursor: number; controls?: ReactNode }) {
+  const [visitorScore, homeScore] = scoreAt(game, cursor);
+  const possession = play ? team(game, play.possession) : undefined;
+  const direction = play ? (play.possession === game.teams[0].id ? "RIGHT →" : "← LEFT") : "—";
+  return (
+    <div className="current-situation" style={{ "--possession-team": possession?.color ?? "#8bf0a6" } as CSSProperties}>
+      <div className="situation-score" aria-label={`${game.teams[0].id} ${visitorScore}, ${game.teams[1].id} ${homeScore}`}><span><i style={{ background: game.teams[0].color }} />{game.teams[0].id}</span><b>{visitorScore}<em>–</em>{homeScore}</b><span>{game.teams[1].id}<i style={{ background: game.teams[1].color }} /></span></div>
+      <div className="situation-clock"><small>GAME CLOCK</small><b>{play ? `Q${play.quarter} · ${play.clock}` : "PREGAME"}</b></div>
+      <div className="situation-possession"><small>POSSESSION</small>{play ? <b><TeamMark game={game} teamId={play.possession} compact /> <span>{direction}</span></b> : <b>READY</b>}</div>
+      <div className="situation-down"><small>SITUATION</small><b>{play ? `${downLabel(play)} · ${play.yardLine}` : "BEFORE KICKOFF"}</b></div>
+      {controls && <div className="situation-controls">{controls}</div>}
+    </div>
+  );
+}
+
 function Field({ game, play, variant = "situation" }: { game: GameData; play?: Play; variant?: "situation" | "replay" }) {
   const view = fieldView(game, play);
   const directionTeam = play ? team(game, play.possession) : undefined;
-  const hasPath = variant === "replay" && view.startPercent !== null && view.endPercent !== null;
-  const pathLeft = hasPath ? Math.min(view.startPercent!, view.endPercent!) : 0;
-  const pathWidth = hasPath ? Math.abs(view.endPercent! - view.startPercent!) : 0;
+  const primaryEnd = view.actionEndPercent ?? view.endPercent;
+  const hasPath = variant === "replay" && view.startPercent !== null && primaryEnd !== null;
+  const pathLeft = hasPath ? Math.min(view.startPercent!, primaryEnd!) : 0;
+  const pathWidth = hasPath ? Math.abs(primaryEnd! - view.startPercent!) : 0;
+  const hasAdjustment = variant === "replay" && view.actionEndPercent !== null && view.endPercent !== null && Math.abs(view.actionEndPercent - view.endPercent) > .1;
+  const adjustmentLeft = hasAdjustment ? Math.min(view.actionEndPercent!, view.endPercent!) : 0;
+  const adjustmentWidth = hasAdjustment ? Math.abs(view.endPercent! - view.actionEndPercent!) : 0;
   return (
     <div className={`field field-${variant} direction-${view.direction}`} aria-label={play ? variant === "replay" ? `${play.possession} possession, play starts at ${view.startPosition}, ${view.finalPosition ? `officially ends at ${view.finalPosition}` : "official end spot unavailable"}, attacking ${view.direction}` : `${play.possession} possession, ball at ${view.startPosition}, attacking ${view.direction}` : "Football field"} style={{ "--left-team": view.leftTeam.color, "--right-team": view.rightTeam.color, "--possession-color": directionTeam?.color ?? "#d9ff66" } as CSSProperties}>
       <div className="endzone left"><b>{view.leftTeam.id}</b><span>END ZONE</span></div>
       <div className="field-of-play">
         {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((yard) => <i key={yard} style={{ left: `${yard}%` }}><span>{yard === 0 || yard === 100 ? "G" : yard <= 50 ? yard : 100 - yard}</span></i>)}
       </div>
-      {variant === "situation" && view.firstDownPercent !== null && <div className="first-down-marker" style={{ left: `${view.firstDownPercent}%` }}><span>1ST</span></div>}
+      {view.firstDownPercent !== null && <div className="first-down-marker" style={{ left: `${view.firstDownPercent}%` }}><span>1ST</span></div>}
+      {variant === "replay" && view.startPercent !== null && <div className="line-of-scrimmage" style={{ left: `${view.startPercent}%` }}><span>LOS</span></div>}
       {variant === "situation" && play && <div className="attack-arrow" style={{ left: view.direction === "right" ? `${Math.min(view.ballPercent + 7, 84)}%` : `${Math.max(view.ballPercent - 7, 16)}%` }}><span>{view.direction === "right" ? "→" : "←"}</span></div>}
       {variant === "situation" && <div className="ball-marker" style={{ left: `${view.ballPercent}%` }}><span>{view.startPosition ?? "50"}</span></div>}
-      {hasPath && <><div className={`play-path direction-${view.direction}`} style={{ left: `${pathLeft}%`, width: `${Math.max(pathWidth, .8)}%` }}><i>{view.direction === "right" ? "›" : "‹"}</i></div><div className="spot-marker start" style={{ left: `${view.startPercent}%` }}><i /><span>START<b>{view.startPosition}</b></span></div><div className="spot-marker end" style={{ left: `${view.endPercent}%` }}><i /><span>OFFICIAL END<b>{view.finalPosition}</b></span></div></>}
-      {variant === "replay" && view.actionEndPercent !== null && view.endPercent !== null && Math.abs(view.actionEndPercent - view.endPercent) > .1 && <div className="spot-marker play-end" style={{ left: `${view.actionEndPercent}%` }}><i /><span>PLAY END<b>{view.actionEndPosition}</b></span></div>}
+      {hasPath && <><div className={`play-path direction-${primaryEnd! >= view.startPercent! ? "right" : "left"}`} style={{ left: `${pathLeft}%`, width: `${Math.max(pathWidth, .8)}%` }}><i>{primaryEnd! >= view.startPercent! ? "›" : "‹"}</i></div><div className="spot-marker start" style={{ left: `${view.startPercent}%` }}><i /><span>START<b>{view.startPosition}</b></span></div></>}
+      {hasAdjustment && <div className="official-adjustment" style={{ left: `${adjustmentLeft}%`, width: `${Math.max(adjustmentWidth, .8)}%` }}><i>{view.endPercent! >= view.actionEndPercent! ? "›" : "‹"}</i></div>}
+      {variant === "replay" && view.actionEndPercent !== null && hasAdjustment && <div className="spot-marker play-end" style={{ left: `${view.actionEndPercent}%` }}><i /><span>PLAY END<b>{view.actionEndPosition}</b></span></div>}
+      {variant === "replay" && view.endPercent !== null && <div className="spot-marker end" style={{ left: `${view.endPercent}%` }}><i /><span>OFFICIAL<b>{view.finalPosition}</b></span></div>}
+      {variant === "replay" && play && <div className="field-result-chip">{view.movementYards === null ? "FINAL SPOT · NOT STATED" : `${view.movementYards >= 0 ? "+" : ""}${view.movementYards} YARDS`}</div>}
       <div className="endzone right"><b>{view.rightTeam.id}</b><span>END ZONE</span></div>
     </div>
   );
@@ -221,15 +231,12 @@ function WatchView({ game, cursor, spoiler, language, onCursor, onPlayer }: { ga
   const driveParticipants = drive ? uniqueParticipants(game.plays.filter((play) => drive.playIds.includes(play.id) && play.index <= cursor).flatMap((play) => play.details.participants))
     .filter((participant) => participant.teamId === drive.teamId && ["passer", "receiver", "target", "rusher", "kicker", "punter", "returner"].includes(participant.role)).slice(0, 8) : [];
   return (
-    <div className="view-grid watch-view">
+    <div className="view-grid watch-view" data-play-anchor>
       <section className="main-column">
-        <div className="section-heading"><div><p className="eyebrow">SECOND-SCREEN COMPANION</p><h2>WATCH ALONG</h2></div><span className="live-chip">SYNC TO VIDEO</span></div>
-        <Locator game={game} cursor={cursor} onCursor={onCursor} />
+        <SituationHeader game={game} play={current} cursor={cursor} controls={<Locator game={game} cursor={cursor} onCursor={onCursor} />} />
         <div className="situation-card">
-          <div className="situation-top" style={{ "--possession-team": current ? team(game, current.possession).color : "#8bf0a6" } as CSSProperties}><span>NOW</span><div><b>{current ? `Q${current.quarter} · ${current.clock}` : "READY"}</b>{current ? <TeamMark game={game} teamId={current.possession} /> : <small>Move the locator when the broadcast begins</small>}</div><strong>{current ? situationLabel(current) : "PREGAME"}</strong>{current && <em className="possession-direction">{current.possession} BALL · {current.possession === game.teams[0].id ? "ATTACKING RIGHT →" : "← ATTACKING LEFT"}</em>}</div>
           <Field game={game} play={current} />
           {current ? <div className="current-play"><PlayTag kind={current.kind} /><PlayText play={current} language={language} /></div> : <div className="current-play waiting"><p>No future play or field position is shown. Use the locator to sync with the video.</p></div>}
-          <div className="watch-sync-hint"><b>VIDEO IS THE TIMELINE</b><span>Use the slider, ← / →, or Space to match the quarter and clock.</span></div>
         </div>
         {drive && <div className="drive-ribbon"><div><span>CURRENT DRIVE</span><TeamMark game={game} teamId={drive.teamId} /></div><div><span>START</span><b>{drive.startPosition}</b></div><div><span>SO FAR</span><b>{drive.playIds.filter((id) => game.plays.find((play) => play.id === id)!.index <= cursor).length} plays</b></div><div><span>BOOK RESULT</span><b className={spoiler && cursor < drive.lastPlayIndex ? "redacted" : ""}>{spoiler && cursor < drive.lastPlayIndex ? "HIDDEN" : drive.result}</b></div></div>}
       </section>
@@ -258,23 +265,18 @@ function ReplayView({ game, cursor, language, onCursor, onPlayer }: { game: Game
   const revealed = game.plays[cursor];
   const next = game.plays[cursor + 1];
   const completedDrive = revealed?.driveId ? game.drives.find((drive) => drive.id === revealed.driveId && drive.lastPlayIndex === cursor) : undefined;
+  const view = fieldView(game, revealed);
   return (
-    <div className="replay-shell">
-      <div className="section-heading replay-heading"><div><p className="eyebrow">NO VIDEO REQUIRED</p><h2>GAMEBOOK REPLAY</h2></div><span className="spoiler-seal">NEXT RESULT LOCKED</span></div>
+    <div className="replay-shell" data-play-anchor>
+      <SituationHeader game={game} play={revealed} cursor={cursor} controls={<div className="replay-progress"><span>PLAY {Math.max(0, cursor + 1)} / {game.plays.length}</span><i><b style={{ width: `${((cursor + 1) / game.plays.length) * 100}%` }} /></i><em>NEXT RESULT LOCKED</em></div>} />
       <div className="replay-stage">
-        <div className="replay-scoreline"><span>PLAY {Math.max(0, cursor + 1)} / {game.plays.length}</span><div className="mini-progress"><i style={{ width: `${((cursor + 1) / game.plays.length) * 100}%` }} /></div><span>{next ? `UP NEXT · Q${next.quarter} ${next.clock}` : "GAME COMPLETE"}</span></div>
         {revealed ? <div className="replay-result">
-          <div className="replay-result-head"><div><span>REVEALED PLAY</span><h3>Q{revealed.quarter} {revealed.clock} · {downLabel(revealed)}</h3></div><div className="result-flags"><PlayTag kind={revealed.kind} />{revealed.noPlay && <span className="no-play">NO PLAY</span>}{revealed.details.events.some((event) => event.type === "touchdown") && <b>TD</b>}{revealed.details.events.some((event) => event.type === "fumble" || event.type === "interception") && <b className="danger">TURNOVER EVENT</b>}{revealed.details.penalties.length > 0 && <b className="penalty-flag">PENALTY</b>}</div></div>
           <Field game={game} play={revealed} variant="replay" />
-          <div className="movement-summary"><div><span>PLAY START</span><b>{fieldView(game, revealed).startPosition ?? "UNKNOWN"}</b></div><strong>{fieldView(game, revealed).movementYards === null ? "OFFICIAL END SPOT NOT AVAILABLE" : `${fieldView(game, revealed).movementYards! >= 0 ? "+" : ""}${fieldView(game, revealed).movementYards} YARDS`}</strong><div><span>OFFICIAL FINAL</span><b>{fieldView(game, revealed).finalPosition ?? "NOT STATED"}</b></div></div>
-          <div className="supporting-play"><span className="reveal-label">SUPPORTING TEXT · EVENT ORDER</span><PlayRow game={game} play={revealed} language={language} onPlayer={onPlayer} /></div>
-        </div> : <div className="opening-card"><span>OPENING SNAP</span><h3>The result is locked.</h3><p>Only the next pre-snap situation is visible until you advance.</p></div>}
+          <div className="field-spot-key"><span><i className="key-start" />START · {view.startPosition ?? "NOT STATED"}</span>{view.actionEndPosition && view.actionEndPosition !== view.finalPosition && <span><i className="key-play-end" />PLAY END · {view.actionEndPosition}</span>}<span><i className="key-official" />OFFICIAL · {view.finalPosition ?? "NOT STATED"}</span><b>{view.movementYards === null ? "NO ESTIMATE" : `${view.movementYards >= 0 ? "+" : ""}${view.movementYards} YARDS`}</b></div>
+          <div className="supporting-play"><div className="supporting-head"><span>SUPPORTING TEXT · EVENT ORDER</span><div className="result-flags"><PlayTag kind={revealed.kind} />{revealed.noPlay && <span className="no-play">NO PLAY</span>}{revealed.details.events.some((event) => event.type === "touchdown") && <b>TD</b>}{revealed.details.events.some((event) => event.type === "fumble" || event.type === "interception") && <b className="danger">TURNOVER EVENT</b>}{revealed.details.penalties.length > 0 && <b className="penalty-flag">PENALTY</b>}</div></div><PlayText play={revealed} language={language} />{!!revealed.playerIds.length && <div className="player-links">{revealed.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}</div>
+        </div> : <div className="opening-card"><span>OPENING SNAP · RESULT LOCKED</span><Field game={game} play={next} variant="situation" /><p>Only the first pre-snap situation is visible. Press Space or → to reveal the play.</p></div>}
         {completedDrive && <DriveSummary drive={completedDrive} game={game} />}
-        {next ? <div className="next-situation locked-next">
-          <div className="next-meta"><div><span>QUARTER</span><b>Q{next.quarter}</b></div><div><span>CLOCK</span><b>{next.clock}</b></div><div><span>POSSESSION</span><TeamMark game={game} teamId={next.possession} /></div></div>
-          <Field game={game} play={next} variant="situation" />
-          <div className="down-hero"><strong>{situationLabel(next)}</strong><span>{next.possession === game.teams[0].id ? "ATTACKING RIGHT →" : "← ATTACKING LEFT"}</span><small>Result hidden until next play</small></div>
-        </div> : <div className="game-over"><span>00:00</span><h3>Game complete.</h3></div>}
+        {next ? <div className="next-situation-line"><span>NEXT</span><b>Q{next.quarter} {next.clock}</b><strong><TeamMark game={game} teamId={next.possession} compact /> {next.possession === game.teams[0].id ? "→" : "←"}</strong><em>{situationLabel(next)}</em><small>RESULT LOCKED</small></div> : <div className="game-over"><span>00:00</span><h3>Game complete.</h3></div>}
         <div className="replay-controls"><button className="back-play" disabled={cursor < 0} onClick={() => onCursor(cursor - 1)}>← Previous</button>{next ? <button className="next-play-button" onClick={() => onCursor(cursor + 1)}><span>NEXT PLAY</span><i>→</i></button> : <button className="next-play-button" onClick={() => onCursor(-1)}><span>REPLAY FROM KICKOFF</span><i>↺</i></button>}</div>
       </div>
     </div>
@@ -458,7 +460,20 @@ export default function App() {
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [game, mode, playerId]);
+  useEffect(() => {
+    if (!game || mode === "explore") return;
+    const frame = window.requestAnimationFrame(() => {
+      const anchor = document.querySelector<HTMLElement>("[data-play-anchor]");
+      if (!anchor) return;
+      const safeTop = window.innerWidth <= 760 ? 52 : 92;
+      const top = anchor.getBoundingClientRect().top;
+      if (top < safeTop - 12 || top > window.innerHeight * .5) {
+        window.scrollTo({ top: Math.max(0, window.scrollY + top - safeTop), behavior: "auto" });
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [game, mode, safeCursor]);
   if (loading) return <LoadingScreen progress={progress} label={loadingLabel} />;
   if (!game) return <Landing onFile={loadFile} onDemo={loadDemo} error={error} />;
-  return <div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} /><Scoreboard game={game} cursor={safeCursor} spoiler={spoiler} onToggle={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No external data or AI APIs</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div>;
+  return <div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No external data or AI APIs</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div>;
 }

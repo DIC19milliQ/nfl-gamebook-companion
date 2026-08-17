@@ -58,6 +58,7 @@ describe("semantic Play parser and lossless Japanese renderer", () => {
     expect(penalty).toContain("19ヤード");
     expect(penalty).toContain("SEA 26で適用");
     expect(penalty).toContain("ノープレー");
+    expect(renderPlaySections(item, "ja").some((section) => section.label === "OFFICIAL MARKER" || section.text.includes("Gamebook marker"))).toBe(false);
   });
 
   it("preserves declined and offsetting penalties without inventing yardage", () => {

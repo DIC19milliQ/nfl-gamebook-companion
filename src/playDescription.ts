@@ -85,7 +85,7 @@ function sectionForEvent(play: Play, event: PlaySequenceEvent): RenderedPlaySect
   if (event.type === "injury-update" && event.injury) return { kind: "note", label: "INJURY UPDATE", text: `${event.injury.teamId ?? "TEAM"} · ${event.injury.player ?? "Player"} — ${injuryStatus(event.injury.status)}。` };
   if (event.type === "drive-summary") return { kind: "scoring", label: "SCORE / DRIVE", text: driveText(event.rawText), phase };
   if (event.type === "kick-crew") return { kind: "scoring", label: `${phase} · KICK CREW`, text: `スナッパー：${event.participantNames?.[0] ?? "—"}。ホルダー：${event.participantNames?.[1] ?? "—"}。`, phase };
-  if (event.type === "official-marker") return { kind: "note", label: "OFFICIAL MARKER", text: `Gamebook marker: ${event.rawText}。` };
+  if (event.type === "official-marker") return undefined;
   if (event.type === "administrative") return { kind: "note", label: "ADMINISTRATIVE", text: event.result === "10-second runoff" ? "10秒ランオフ。" : event.rawText };
   if (event.type === "raw") return { kind: "note", label: "RAW / UNPARSED", text: event.rawText, raw: true, phase };
   return undefined;
