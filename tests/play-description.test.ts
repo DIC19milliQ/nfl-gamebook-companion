@@ -7,6 +7,10 @@ const teams: [Team, Team] = [
   { id: "DAL", name: "Dallas Cowboys", shortName: "Cowboys", homeAway: "visitor", score: 0, color: "#57a" },
   { id: "SEA", name: "Seattle Seahawks", shortName: "Seahawks", homeAway: "home", score: 0, color: "#596" },
 ];
+const minNygTeams: [Team, Team] = [
+  { id: "MIN", name: "Minnesota Vikings", shortName: "Vikings", homeAway: "visitor", score: 0, color: "#426" },
+  { id: "NYG", name: "New York Giants", shortName: "Giants", homeAway: "home", score: 0, color: "#247" },
+];
 
 function play(description: string, possession = "SEA"): Play {
   const details = parsePlayDetails(description, possession, teams);
@@ -68,6 +72,17 @@ describe("semantic Play parser and lossless Japanese renderer", () => {
     expect(offsetting.details.penalties[0]).toMatchObject({ status: "offsetting", yards: undefined, noPlay: true });
     expect(renderPlayDescription(declined, "ja")).toContain("辞退");
     expect(renderPlayDescription(offsetting, "ja")).toContain("相殺");
+  });
+
+  it("supports offsetting-before-enforcement and two-letter-initial penalty names", () => {
+    const offsetting = parsePlayDetails("Penalty on NYG-T.Fidone, Illegal Formation, offsetting, enforced at NYG 11 - No Play.", "NYG", minNygTeams);
+    const twoLetterInitial = parsePlayDetails("PENALTY on MIN-Je.Jefferson, Offensive Holding, 4 yards, enforced at MIN 8.", "NYG", minNygTeams);
+    expect(offsetting.penalties).toEqual([expect.objectContaining({
+      teamId: "NYG", playerName: "T.Fidone", type: "Illegal Formation", status: "offsetting", enforcement: "enforced", enforcedAt: "NYG 11", noPlay: true,
+    })]);
+    expect(twoLetterInitial.penalties).toEqual([expect.objectContaining({
+      teamId: "MIN", playerName: "Je.Jefferson", type: "Offensive Holding", yards: 4, enforcement: "enforced", enforcedAt: "MIN 8", status: "accepted",
+    })]);
   });
 
   it("structures touchdowns, extra points, score and drive summaries", () => {

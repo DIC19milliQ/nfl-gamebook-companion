@@ -30,6 +30,19 @@ describe("multiple 2026 Gamebook formats", () => {
     expect(game.source.sections.playtimePercentage).toBe(false);
     expect(game.players.find((player) => player.id === "DAL-B.Anger")?.position).toBe("P");
     expect(game.players.find((player) => player.id === "SEA-J.Myers")?.position).toBe("K");
+    expect(game.scoring.map(({ quarter, clock, visitorScore, homeScore }) => [quarter, clock, visitorScore, homeScore])).toEqual([
+      [1, "7:42", 0, 7],
+      [2, "11:14", 3, 7],
+      [2, "0:38", 10, 7],
+      [3, "7:41", 17, 7],
+    ]);
+    expect(game.scoring.map((score) => score.playIndex)).toEqual([...game.scoring.map((score) => score.playIndex)].sort((a, b) => a - b));
+    expect(new Set(game.scoring.map((score) => `${score.teamId}|${score.quarter}|${score.clock}|${score.visitorScore}|${score.homeScore}`)).size).toBe(4);
+    const scoreAt = (cursor: number) => {
+      const score = game.scoring.filter((item) => item.playIndex <= cursor).at(-1);
+      return score ? [score.visitorScore, score.homeScore] : [0, 0];
+    };
+    expect([-1, ...game.scoring.map((score) => score.playIndex)].map(scoreAt)).toEqual([[0, 0], [0, 7], [3, 7], [10, 7], [17, 7]]);
     expect(game.validation.metrics.positionCoverageByTeam).toEqual({ DAL: 1, SEA: 1 });
     expect(game.validation.status).toBe("complete");
     expect(game.validation.metrics.snapCountByTeam).toEqual({ DAL: 0, SEA: 0 });

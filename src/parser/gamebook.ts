@@ -164,27 +164,33 @@ function parseTeamStats(page: RawPage | undefined): TeamStat[] {
     .filter((stat) => stat.label && stat.label !== "Visitor" && stat.label !== "Home");
 }
 
-function parseScoring(page: RawPage | undefined, teams: [Team, Team]): ScoringPlay[] {
-  if (!page) return [];
+function parseScoring(pages: RawPage[], teams: [Team, Team]): ScoringPlay[] {
   const teamByShort = new Map(teams.map((team) => [team.shortName, team]));
-  return page.lines
+  const rows = pages.flatMap((page) => page.lines)
     .filter((line) => {
       const tokens = lineTokens(line);
       return teamByShort.has(tokens[0]) && /^\d+$/.test(tokens[1] ?? "") && /^\d+:\d+$/.test(tokens[2] ?? "");
-    })
-    .map((line, index) => {
+    });
+  const seen = new Set<string>();
+  return rows.flatMap((line) => {
       const tokens = lineTokens(line);
       const team = teamByShort.get(tokens[0])!;
-      return {
-        id: `score-${index + 1}`,
+      const description = tokens.slice(3, -2).join(" ");
+      const visitorScore = number(tokens.at(-2));
+      const homeScore = number(tokens.at(-1));
+      const key = [team.id, tokens[1], tokens[2], description, visitorScore, homeScore].join("|");
+      if (seen.has(key)) return [];
+      seen.add(key);
+      return [{
+        id: `score-${seen.size}`,
         teamId: team.id,
         quarter: number(tokens[1]),
         clock: tokens[2],
-        description: tokens.slice(3, -2).join(" "),
-        visitorScore: number(tokens.at(-2)),
-        homeScore: number(tokens.at(-1)),
+        description,
+        visitorScore,
+        homeScore,
         playIndex: -1,
-      };
+      }];
     });
 }
 
@@ -638,7 +644,7 @@ export function parseGamebookPages(pages: RawPage[], fileName = "gamebook.pdf"):
   const summary = pageContaining(pages, "National Football League Game Summary") ?? pages[0];
   const gameSummary = pages.find((page) => page.page !== summary.page && page.text.includes("National Football League Game Summary"));
   const teams = parseTeams(summary);
-  const scoring = parseScoring(gameSummary, teams);
+  const scoring = parseScoring(pages.filter((page) => page.text.includes("National Football League Game Summary")), teams);
   const teamStats = parseTeamStats(pageContaining(pages, "Final Team Statistics"));
   const { plays, driveStarts } = parsePlays(pages, teams);
   const drives = attachDrives(parseDrives(pageContaining(pages, "Ball Possession And Drive Chart"), teams), plays, driveStarts);

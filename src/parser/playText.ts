@@ -4,7 +4,7 @@ import type {
   PlayScoringDetails, PlaySequenceEvent, PlaySequenceType, PlaySpot, Team, TeamId,
 } from "../types";
 
-const PLAYER_SOURCE = "(?:[A-Z]\\.){1,2}[A-Z][A-Za-z'-]*";
+const PLAYER_SOURCE = "(?:[A-Z][a-z]?\\.){1,2}[A-Z][A-Za-z'-]*";
 const PLAYER_RE = new RegExp(`\\b${PLAYER_SOURCE}`, "g");
 const POSITION_SOURCE = "(?:[A-Z]{2,3} \\d+|50|end zone)";
 const DIRECTIONS = "left end|left tackle|left guard|up the middle|right guard|right tackle|right end";
@@ -103,11 +103,11 @@ function addParticipant(list: PlayParticipant[], name: string | undefined, role:
 function penaltyKey(penalty: PlayPenalty) { return [penalty.teamId, penalty.playerName, penalty.type.toLowerCase(), penalty.yards, penalty.enforcement, penalty.enforcedAt, penalty.status, penalty.noPlay].join("|"); }
 function penaltyOccurrences(description: string, teams: [Team, Team]) {
   const output: { penalty: PlayPenalty; start: number; end: number }[] = [];
-  const pattern = new RegExp(`\\bPENALTY on ([A-Z]{2,3})(?:-\\s*(${PLAYER_SOURCE}))?,\\s*([^,.]+?)(?:,\\s*(\\d+) yards?)?(?:,\\s*(enforced at|placed at)\\s*(${POSITION_SOURCE}))?(?:,\\s*(declined|offsetting))?(?:\\s*-\\s*No Play)?(?=\\.|$)`, "gi");
+  const pattern = new RegExp(`\\bPENALTY on ([A-Z]{2,3})(?:-\\s*(${PLAYER_SOURCE}))?,\\s*([^,.]+?)(?:,\\s*(\\d+) yards?)?(?:,\\s*(declined|offsetting))?(?:,\\s*(enforced at|placed at)\\s*(${POSITION_SOURCE}))?(?:,\\s*(declined|offsetting))?(?:\\s*-\\s*No Play)?(?=\\.|$)`, "gi");
   for (const match of description.matchAll(pattern)) {
-    const rawText = match[0], disposition = match[7]?.toLowerCase();
-    const status = disposition === "declined" ? "declined" : disposition === "offsetting" ? "offsetting" : match[4] || match[5] ? "accepted" : "unknown";
-    output.push({ start: match.index ?? 0, end: (match.index ?? 0) + rawText.length, penalty: { teamId: teamId(match[1].toUpperCase(), teams), playerName: match[2], type: match[3].trim(), yards: match[4] ? Number(match[4]) : undefined, enforcement: match[5]?.toLowerCase().startsWith("placed") ? "placed" : match[5] ? "enforced" : undefined, enforcedAt: match[6], status, noPlay: /No Play/i.test(rawText), automaticFirstDown: /automatic first down/i.test(rawText), rawText } });
+    const rawText = match[0], disposition = (match[5] ?? match[8])?.toLowerCase();
+    const status = disposition === "declined" ? "declined" : disposition === "offsetting" ? "offsetting" : match[4] || match[6] ? "accepted" : "unknown";
+    output.push({ start: match.index ?? 0, end: (match.index ?? 0) + rawText.length, penalty: { teamId: teamId(match[1].toUpperCase(), teams), playerName: match[2], type: match[3].trim(), yards: match[4] ? Number(match[4]) : undefined, enforcement: match[6]?.toLowerCase().startsWith("placed") ? "placed" : match[6] ? "enforced" : undefined, enforcedAt: match[7], status, noPlay: /No Play/i.test(rawText), automaticFirstDown: /automatic first down/i.test(rawText), rawText } });
   }
   return output;
 }
