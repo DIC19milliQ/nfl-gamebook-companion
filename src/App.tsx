@@ -3,12 +3,11 @@ import type { CSSProperties, ReactNode } from "react";
 import { parseGamebook } from "./parser";
 import { renderPlayDescription, renderPlaySections, type DescriptionLanguage } from "./playDescription";
 import { driveResultView, fieldView, replayFieldView } from "./field";
+import { planReplayFieldLayout, type ReplayLabelLane } from "./replayLayout";
 import type { Drive, GameData, Play, PlayParticipant, Player, TeamId } from "./types";
 
 type Mode = "watch" | "replay" | "explore";
 type ExploreTab = "flow" | "drives" | "plays" | "players" | "stats";
-
-const SAMPLE_FILE = "colts-at-patriots-2026-08-13.pdf";
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const downLabel = (play?: Play) => play ? `${play.down}${["th", "st", "nd", "rd"][play.down] ?? "th"} & ${play.distance}` : "Ready";
@@ -50,7 +49,7 @@ function LoadingScreen({ progress, label }: { progress: number; label: string })
   );
 }
 
-function Landing({ onFile, onDemo, error }: { onFile: (file: File) => void; onDemo: () => void; error: string }) {
+function Landing({ onFile, error }: { onFile: (file: File) => void; error: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   return (
@@ -78,8 +77,6 @@ function Landing({ onFile, onDemo, error }: { onFile: (file: File) => void; onDe
           <p>Drop an NFL Gamebook PDF here or choose one from your device.</p>
           <button className="primary-button" onClick={() => inputRef.current?.click()}>Choose PDF</button>
           <input ref={inputRef} hidden type="file" accept="application/pdf,.pdf" onChange={(event) => event.target.files?.[0] && onFile(event.target.files[0])} />
-          <div className="or"><span />OR<span /></div>
-          <button className="text-button" onClick={onDemo}>Open Colts @ Patriots sample <span>→</span></button>
           {error && <p className="error-message">{error}</p>}
         </div>
       </section>
@@ -154,29 +151,42 @@ function Field({ game, play, variant = "situation" }: { game: GameData; play?: P
   const passEnd = replay.visualization === "pass-incomplete" ? replay.schematicTargetPercent : primaryEnd;
   const hasPassPath = variant === "replay" && isPass && view.startPercent !== null && passEnd !== null;
   const passControlX = hasPassPath ? (view.startPercent! + passEnd!) / 2 : 50;
-  const passControlY = Math.max(19, replay.schematicLane - 22);
+  const layout = planReplayFieldLayout({
+    visualization: replay.visualization,
+    visualizationLabel: replay.visualizationLabel,
+    playDirection: replay.playDirection,
+    direction: view.direction,
+    startPercent: view.startPercent,
+    primaryEndPercent: passEnd ?? primaryEnd,
+    displayFinalPercent: replay.displayFinalPercent,
+    actionEndPercent: view.actionEndPercent,
+    firstDownPercent: view.firstDownPercent,
+    noMovement: replay.noMovement,
+    turnover: replay.turnover,
+  });
+  const annotationStyle = (placement: { x: number; lane: ReplayLabelLane }) => ({ left: `${placement.x}%` } as CSSProperties);
   return (
     <div className={`field field-${variant} direction-${view.direction} replay-mode-${replay.mode} visualization-${replay.visualization}`} aria-label={play ? variant === "replay" ? `${play.possession} possession, ${replay.downDistance}, ${replay.visualizationLabel}${replay.playDirection ? ` ${replay.playDirection}` : ""}, ${replay.resultLabel}, attacking ${view.direction}` : `${play.possession} possession, ball at ${view.startPosition}, attacking ${view.direction}` : "Football field"} style={{ "--left-team": view.leftTeam.color, "--right-team": view.rightTeam.color, "--possession-color": directionTeam?.color ?? "#d9ff66" } as CSSProperties}>
       <div className="endzone left"><b>{view.leftTeam.id}</b><span>END ZONE</span></div>
       <div className="field-of-play">
         {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((yard) => <i key={yard} style={{ left: `${yard}%` }}><span>{yard === 0 || yard === 100 ? "G" : yard <= 50 ? yard : 100 - yard}</span></i>)}
       </div>
-      {view.firstDownPercent !== null && <div className="first-down-marker" style={{ left: `${view.firstDownPercent}%` }}><span>1ST</span></div>}
-      {variant === "replay" && view.startPercent !== null && <div className="line-of-scrimmage" style={{ left: `${view.startPercent}%` }}><span>LOS</span></div>}
+      {view.firstDownPercent !== null && <><div className="first-down-marker" style={{ left: `${view.firstDownPercent}%` }} />{variant === "replay" && <span className={`field-line-label first-down-label lane-${layout.firstDown.lane}`} style={annotationStyle(layout.firstDown)}>1ST</span>}</>}
+      {variant === "replay" && view.startPercent !== null && <><div className="line-of-scrimmage" style={{ left: `${view.startPercent}%` }} /><span className={`field-line-label los-label lane-${layout.los.lane}`} style={annotationStyle(layout.los)}>LOS</span></>}
       {variant === "situation" && play && <div className="attack-arrow" style={{ left: view.direction === "right" ? `${Math.min(view.ballPercent + 7, 84)}%` : `${Math.max(view.ballPercent - 7, 16)}%` }}><span>{view.direction === "right" ? "→" : "←"}</span></div>}
       {variant === "situation" && <div className="ball-marker" style={{ left: `${view.ballPercent}%` }}><span>{view.startPosition ?? "50"}</span></div>}
-      {variant === "replay" && play && view.startPercent !== null && <div className={`broadcast-situation direction-${view.direction}${(view.direction === "right" && view.startPercent > 78) || (view.direction === "left" && view.startPercent < 22) ? " edge-pinned" : ""}`} style={{ left: `${view.startPercent}%` }}><span>{play.possession}</span><b>{replay.downDistance}</b><i /></div>}
-      {variant === "replay" && replay.mode !== "field-goal" && <div className={`field-play-identity identity-${view.startPercent !== null && view.startPercent < 50 ? "right" : "left"}`} title="Direction is a schematic cue from the Gamebook, not tracking coordinates"><b>{replay.visualizationLabel}</b>{replay.playDirection && <span>{replay.playDirection} · SCHEMATIC</span>}</div>}
-      {hasPath && <div className={`play-path path-${replay.visualization} direction-${primaryEnd! >= view.startPercent! ? "right" : "left"}`} style={{ left: `${pathLeft}%`, width: `${Math.max(pathWidth, .8)}%`, top: `${replay.schematicLane}%` }}><i>{primaryEnd! >= view.startPercent! ? "›" : "‹"}</i></div>}
-      {hasPassPath && <svg className={`pass-trajectory trajectory-${replay.visualization}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={`M ${view.startPercent} 50 Q ${passControlX} ${passControlY} ${passEnd} ${replay.schematicLane}`} /></svg>}
-      {variant === "replay" && replay.visualization === "pass-incomplete" && replay.schematicTargetPercent !== null && <div className="incomplete-target" style={{ left: `${replay.schematicTargetPercent}%`, top: `${replay.schematicLane}%` }} title="Schematic target direction; official ball position remains at the final marker"><i>×</i><span>INCOMPLETE</span></div>}
+      {variant === "replay" && play && view.startPercent !== null && <div className={`broadcast-situation direction-${view.direction} lane-${layout.situation.lane}`} style={annotationStyle(layout.situation)}><span>{play.possession}</span><b>{replay.downDistance}</b><i /></div>}
+      {variant === "replay" && replay.mode !== "field-goal" && <div className={`field-play-identity lane-${layout.identity.lane}`} style={annotationStyle(layout.identity)} title="Gamebook side wording is shown as text only; the route does not map it to screen up/down"><b>{replay.visualizationLabel}</b>{replay.playDirection && <span>{replay.playDirection} · TEXT ONLY</span>}</div>}
+      {hasPath && <div className={`play-path path-${replay.visualization} ${replay.visualizationLabel === "QB SCRAMBLE" ? "path-scramble" : ""} direction-${primaryEnd! >= view.startPercent! ? "right" : "left"}`} style={{ left: `${pathLeft}%`, width: `${Math.max(pathWidth, .8)}%`, top: `${layout.pathY}%` }}><i>{primaryEnd! >= view.startPercent! ? "›" : "‹"}</i></div>}
+      {hasPassPath && <svg className={`pass-trajectory trajectory-${replay.visualization}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={`M ${view.startPercent} ${layout.pathY} Q ${passControlX} ${layout.passApexY} ${passEnd} ${layout.pathY}`} /></svg>}
+      {variant === "replay" && replay.visualization === "pass-incomplete" && replay.schematicTargetPercent !== null && <div className="incomplete-target" style={{ left: `${replay.schematicTargetPercent}%`, top: `${layout.pathY}%` }} title="Schematic target distance; official ball position remains at START"><i>×</i><span>INCOMPLETE</span></div>}
       {variant === "replay" && replay.mode === "field-goal" && view.startPercent !== null && replay.displayFinalPercent !== null && <><div className={`field-goal-trajectory direction-${view.direction}`} style={{ left: `${kickLeft}%`, width: `${Math.max(kickWidth, 1)}%` }}><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={view.direction === "right" ? "M 0 82 Q 52 3 100 42" : "M 100 82 Q 48 3 0 42"} /></svg></div><div className="uprights-marker" style={{ left: `${replay.displayFinalPercent}%` }}><i /><span>UPRIGHTS</span></div></>}
-      {variant === "replay" && view.startPercent !== null && !replay.noMovement && <div className="spot-marker start" style={{ left: `${view.startPercent}%` }}><i /><span>{replay.mode === "field-goal" ? "KICK ORIGIN" : "START"}<b>{view.startPosition}</b></span></div>}
-      {variant === "replay" && replay.noMovement && view.startPercent !== null && <div className="spot-marker same-spot" style={{ left: `${view.startPercent}%` }}><i /><span>START / FINAL<b>{view.startPosition}</b></span></div>}
+      {variant === "replay" && view.startPercent !== null && !replay.noMovement && <><div className="spot-marker start" style={{ left: `${view.startPercent}%` }}><i /></div><div className={`spot-label start lane-${layout.start.lane}`} style={annotationStyle(layout.start)}>{replay.mode === "field-goal" ? "KICK ORIGIN" : "START"}<b>{view.startPosition}</b></div></>}
+      {variant === "replay" && replay.noMovement && view.startPercent !== null && <><div className="spot-marker same-spot" style={{ left: `${view.startPercent}%` }}><i /></div><div className={`spot-label same-spot lane-${layout.start.lane}`} style={annotationStyle(layout.start)}>START / FINAL<b>{view.startPosition}</b></div></>}
       {hasAdjustment && <div className="official-adjustment" style={{ left: `${adjustmentLeft}%`, width: `${Math.max(adjustmentWidth, .8)}%` }}><i>{replay.displayFinalPercent! >= adjustmentStart! ? "›" : "‹"}</i></div>}
-      {variant === "replay" && view.actionEndPercent !== null && hasAdjustment && <div className="spot-marker play-end" style={{ left: `${view.actionEndPercent}%` }}><i /><span>PLAY END<b>{view.actionEndPosition}</b></span></div>}
-      {variant === "replay" && !replay.noMovement && replay.mode !== "field-goal" && replay.displayFinalPercent !== null && <div className={`spot-marker end ${replay.mode === "touchdown" ? "touchdown-end" : ""}`} style={{ left: `${replay.displayFinalPercent}%` }}><i /><span>{replay.mode === "touchdown" ? "TOUCHDOWN" : "OFFICIAL"}<b>{replay.displayFinalPosition}</b></span></div>}
-      {variant === "replay" && replay.turnover && replay.displayFinalPercent !== null && <div className="turnover-indicator" style={{ left: `${replay.displayFinalPercent}%` }}><i>!</i><span>TURNOVER</span></div>}
+      {variant === "replay" && view.actionEndPercent !== null && hasAdjustment && <><div className="spot-marker play-end" style={{ left: `${view.actionEndPercent}%` }}><i /></div><div className={`spot-label play-end lane-${layout.playEnd.lane}`} style={annotationStyle(layout.playEnd)}>PLAY END<b>{view.actionEndPosition}</b></div></>}
+      {variant === "replay" && !replay.noMovement && replay.mode !== "field-goal" && replay.displayFinalPercent !== null && <><div className={`spot-marker end ${replay.mode === "touchdown" ? "touchdown-end" : ""}`} style={{ left: `${replay.displayFinalPercent}%` }}><i /></div><div className={`spot-label end ${replay.mode === "touchdown" ? "touchdown-end" : ""} lane-${layout.final.lane}`} style={annotationStyle(layout.final)}>{replay.mode === "touchdown" ? "TOUCHDOWN" : "FINAL"}<b>{replay.displayFinalPosition}</b></div></>}
+      {variant === "replay" && replay.turnover && replay.displayFinalPercent !== null && <div className={`turnover-indicator lane-${layout.turnover.lane}`} style={annotationStyle(layout.turnover)}><i>!</i><span>TURNOVER</span></div>}
       <div className="endzone right"><b>{view.rightTeam.id}</b><span>END ZONE</span></div>
     </div>
   );
@@ -462,17 +472,6 @@ export default function App() {
     await loadBytes(await file.arrayBuffer(), file.name);
   }, [loadBytes]);
 
-  const loadDemo = useCallback(async () => {
-    try {
-      setLoading(true); setProgress(1); setLoadingLabel("Loading the included Gamebook…");
-      const response = await fetch(`./${SAMPLE_FILE}`);
-      if (!response.ok) throw new Error("The included fixture is not available.");
-      await loadBytes(await response.arrayBuffer(), SAMPLE_FILE);
-    } catch (cause) {
-      setLoading(false); setError(cause instanceof Error ? cause.message : "Could not load the sample.");
-    }
-  }, [loadBytes]);
-
   const reset = () => { setGame(null); setPlayerId(""); setCursor(-1); document.title = "Gamebook Companion"; };
   const safeCursor = useMemo(() => game ? clamp(cursor, -1, game.plays.length - 1) : -1, [cursor, game]);
   useEffect(() => {
@@ -504,6 +503,6 @@ export default function App() {
     return () => window.cancelAnimationFrame(frame);
   }, [game, mode, safeCursor]);
   if (loading) return <LoadingScreen progress={progress} label={loadingLabel} />;
-  if (!game) return <Landing onFile={loadFile} onDemo={loadDemo} error={error} />;
+  if (!game) return <Landing onFile={loadFile} error={error} />;
   return <div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No external data or AI APIs</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div>;
 }

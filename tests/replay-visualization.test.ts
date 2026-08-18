@@ -75,7 +75,7 @@ describe("GAMEBOOK REPLAY field visualization model", () => {
   it("uses a solid run grammar and exposes positive and negative semantic results", () => {
     const run = replayFieldView(game, makePlay("T.Pollard right tackle to SF 45 for 8 yards.", { stateAfter: "SF 45" }));
     const sack = replayFieldView(game, makePlay("C.Ward sacked at TEN 39 for -8 yards (N.Bosa).", { stateAfter: "TEN 39" }));
-    expect(run).toMatchObject({ visualization: "run", playDirection: "RIGHT TACKLE", schematicLane: 62, resultState: "positive", resultLabel: "+8 YARDS" });
+    expect(run).toMatchObject({ visualization: "run", playDirection: "RIGHT TACKLE", schematicLane: 50, resultState: "positive", resultLabel: "+8 YARDS" });
     expect(sack).toMatchObject({ visualization: "sack", resultState: "negative", resultLabel: "-8 YARDS" });
   });
 

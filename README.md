@@ -38,7 +38,7 @@ npm run check     # test + build
 
 1. 初期画面で `Choose PDF` を押すか、PDFをドロップします。
 2. 解析はブラウザ内で完結します。
-3. 同梱fixtureを使う場合は `Open Colts @ Patriots sample` を押します。
+3. `Choose PDF` からNFL Gamebook PDFを選択します（解析は端末内で完結します）。
 
 テストfixture:
 

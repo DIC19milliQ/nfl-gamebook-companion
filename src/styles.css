@@ -311,32 +311,38 @@ button { cursor: pointer; }
 .official-adjustment { position: absolute; z-index: 5; top: 50%; height: 0; transform: translateY(-50%); border-top: 3px dashed var(--amber); }
 .official-adjustment i { position: absolute; top: 50%; right: -7px; transform: translateY(-55%); color: var(--amber); font: 28px/1 Impact, sans-serif; font-style: normal; }
 .line-of-scrimmage { position: absolute; z-index: 4; inset-block: 0; width: 2px; border-left: 2px solid #6bb7ff; }
-.line-of-scrimmage span { position: absolute; left: -11px; bottom: 4px; padding: 1px 3px; background: #173e27; color: #9fd0ff; font-size: 6px; font-weight: 900; }
-.broadcast-situation { --situation-arrow: 17px; position: absolute; z-index: 11; top: calc(50% + 29px); min-width: 112px; height: 28px; display: flex; align-items: center; background: var(--possession-color); color: white; border: 2px solid #eff8f2; box-shadow: 0 3px 0 #07120d, 0 0 16px rgba(0,0,0,.38); text-shadow: 0 1px 2px #07120d; }
+.field-line-label { position: absolute; z-index: 10; transform: translateX(-50%); padding: 1px 3px; background: #173e27; font-size: 6px; font-weight: 900; pointer-events: none; }
+.field-line-label.lane-top { top: 3px; }
+.field-line-label.lane-bottom { bottom: 3px; }
+.los-label { color: #9fd0ff; }
+.first-down-label { color: #f4d76c; }
+.broadcast-situation { position: absolute; z-index: 11; top: 50%; min-width: 112px; height: 28px; display: flex; align-items: center; transform: translate(-50%, -50%); background: var(--possession-color); color: white; border: 2px solid #eff8f2; box-shadow: 0 3px 0 #07120d, 0 0 16px rgba(0,0,0,.38); text-shadow: 0 1px 2px #07120d; }
 .broadcast-situation span { align-self: stretch; display: grid; place-items: center; min-width: 38px; padding: 0 6px; border-right: 1px solid rgba(255,255,255,.55); font: 14px/1 Impact, sans-serif; letter-spacing: .06em; }
 .broadcast-situation b { padding: 0 8px; font-size: 8px; letter-spacing: .05em; white-space: nowrap; }
-.broadcast-situation i { position: absolute; top: -2px; width: 0; height: 0; border-top: 14px solid transparent; border-bottom: 14px solid transparent; filter: drop-shadow(2px 2px 0 #07120d); }
-.broadcast-situation.direction-right { transform: translateX(5px); }
-.broadcast-situation.direction-right i { right: -17px; border-left: 17px solid var(--possession-color); }
-.broadcast-situation.direction-left { transform: translateX(calc(-100% - 5px)); flex-direction: row-reverse; }
+.broadcast-situation i { position: absolute; top: -2px; width: 0; height: 0; border-top: 14px solid transparent; border-bottom: 14px solid transparent; }
+.broadcast-situation.direction-right i { right: -17px; border-left: 17px solid var(--possession-color); filter: drop-shadow(2px 2px 0 #07120d); }
+.broadcast-situation.direction-left { flex-direction: row-reverse; }
 .broadcast-situation.direction-left span { border-right: 0; border-left: 1px solid rgba(255,255,255,.55); }
 .broadcast-situation.direction-left i { left: -17px; border-right: 17px solid var(--possession-color); filter: drop-shadow(-2px 2px 0 #07120d); }
-.broadcast-situation.direction-right.edge-pinned { transform: translateX(calc(-100% - var(--situation-arrow))); }
-.broadcast-situation.direction-left.edge-pinned { transform: translateX(var(--situation-arrow)); }
-.field-play-identity { position: absolute; z-index: 7; top: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 7px; padding: 4px 7px; border: 1px solid rgba(255,255,255,.38); background: #07120dd9; white-space: nowrap; }
-.field-play-identity.identity-left { left: 11%; transform: none; }
-.field-play-identity.identity-right { left: auto; right: 11%; transform: none; }
+.broadcast-situation.lane-top { transform: translate(-50%, -64px); }
+.broadcast-situation.lane-bottom { transform: translate(-50%, 36px); }
+.field-play-identity { position: absolute; z-index: 7; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; gap: 7px; padding: 4px 7px; border: 1px solid rgba(255,255,255,.38); background: #07120ded; white-space: nowrap; }
+.field-play-identity.lane-top { top: 13%; }
+.field-play-identity.lane-bottom { top: 87%; }
 .field-play-identity b { color: white; font: 12px/1 Impact, sans-serif; letter-spacing: .08em; }
 .field-play-identity span { color: #c8d7cf; font-size: 6px; font-weight: 900; letter-spacing: .08em; }
 .play-path.path-run { height: 9px; border: 1px solid rgba(255,255,255,.8); border-radius: 8px; }
+.play-path.path-scramble { height: 8px; border-style: dashed; background: repeating-linear-gradient(90deg, var(--possession-color) 0 11px, transparent 11px 16px); box-shadow: 0 0 12px color-mix(in srgb, var(--possession-color) 55%, transparent); }
 .play-path.path-sack { height: 8px; background: var(--red); color: var(--red); box-shadow: 0 0 14px color-mix(in srgb, var(--red) 65%, transparent); }
 .pass-trajectory { position: absolute; z-index: 5; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .pass-trajectory path { fill: none; stroke: var(--possession-color); stroke-width: 4; stroke-dasharray: 3 3; stroke-linecap: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--possession-color) 70%, transparent)); }
 .trajectory-pass-incomplete path { stroke-width: 3; stroke-dasharray: 2 4; opacity: .95; }
-.incomplete-target { position: absolute; z-index: 10; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 3px; pointer-events: none; }
-.incomplete-target i { width: 27px; height: 27px; display: grid; place-items: center; border: 2px solid #e8f0ec; border-radius: 50%; background: #14211c; color: white; font: 24px/1 Arial, sans-serif; font-style: normal; box-shadow: 0 0 0 3px #07120d99; }
-.incomplete-target span { padding: 3px 5px; border: 1px solid #99aaa1; background: #07120deb; color: white; font-size: 6px; font-weight: 950; letter-spacing: .1em; }
-.turnover-indicator { position: absolute; z-index: 12; top: 67%; transform: translateX(-50%); display: grid; justify-items: center; gap: 2px; pointer-events: none; }
+.incomplete-target { position: absolute; z-index: 10; width: 0; height: 0; pointer-events: none; }
+.incomplete-target i { position: absolute; left: 0; top: 0; width: 27px; height: 27px; transform: translate(-50%, -50%); display: grid; place-items: center; border: 2px solid #e8f0ec; border-radius: 50%; background: #14211c; color: white; font: 24px/1 Arial, sans-serif; font-style: normal; box-shadow: 0 0 0 3px #07120d99; }
+.incomplete-target span { position: absolute; top: 18px; left: 0; transform: translateX(-50%); padding: 3px 5px; border: 1px solid #99aaa1; background: #07120deb; color: white; font-size: 6px; font-weight: 950; letter-spacing: .1em; white-space: nowrap; }
+.turnover-indicator { position: absolute; z-index: 12; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 2px; pointer-events: none; }
+.turnover-indicator.lane-top { top: 32%; }
+.turnover-indicator.lane-bottom { top: 68%; }
 .turnover-indicator i { width: 22px; height: 22px; display: grid; place-items: center; border: 2px solid #ffd5d0; border-radius: 50%; background: #7c2926; color: white; font-weight: 950; font-style: normal; }
 .turnover-indicator span { padding: 2px 4px; background: #2a100f; color: #ff9c93; font-size: 6px; font-weight: 950; letter-spacing: .08em; }
 .field-goal-trajectory { position: absolute; z-index: 5; top: 8%; height: 58%; pointer-events: none; }
@@ -348,19 +354,20 @@ button { cursor: pointer; }
 .uprights-marker span { margin-top: 16px; padding: 2px 4px; background: #07120d; color: var(--amber); font-size: 6px; font-weight: 900; letter-spacing: .08em; }
 .spot-marker { position: absolute; z-index: 8; top: 0; bottom: 0; width: 2px; transform: translateX(-1px); }
 .spot-marker > i { position: absolute; top: 50%; left: 50%; width: 17px; height: 17px; transform: translate(-50%, -50%); border-radius: 50%; background: #0b1712; border: 4px solid white; box-shadow: 0 0 0 2px #0b1712; }
-.spot-marker > span { position: absolute; left: 50%; width: max-content; min-width: 72px; transform: translateX(-50%); display: grid; gap: 2px; padding: 5px 7px; background: #07120d; border: 1px solid #769086; color: var(--muted); text-align: center; font-size: 6px; font-weight: 900; letter-spacing: .1em; }
-.spot-marker > span b { color: var(--text); font-size: 9px; letter-spacing: .02em; }
-.spot-marker.start > span { top: 18px; }
 .spot-marker.start > i { border-color: #dbe7df; }
-.spot-marker.end > span { bottom: 18px; border-color: var(--green); }
 .spot-marker.end > i { border-color: var(--green); background: var(--green); }
 .spot-marker.play-end { border-left: 1px dashed var(--amber); }
-.spot-marker.play-end > span { top: 18px; border-color: var(--amber); color: var(--amber); }
 .spot-marker.play-end > i { width: 11px; height: 11px; border: 2px solid var(--amber); }
-.spot-marker.same-spot > span { top: 18px; border-color: white; }
 .spot-marker.same-spot > i { width: 22px; height: 22px; border: 4px solid white; box-shadow: 0 0 0 4px var(--green), 0 0 0 7px #0b1712; }
-.spot-marker.touchdown-end > span { border-color: var(--green); color: var(--green); }
 .spot-marker.touchdown-end > i { width: 22px; height: 22px; border-color: var(--green); box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 30%, transparent); }
+.spot-label { position: absolute; z-index: 9; width: max-content; min-width: 72px; transform: translate(-50%, -50%); display: grid; gap: 2px; padding: 5px 7px; background: #07120ded; border: 1px solid #769086; color: var(--muted); text-align: center; font-size: 6px; font-weight: 900; letter-spacing: .1em; pointer-events: none; }
+.spot-label.lane-top { top: 15%; }
+.spot-label.lane-bottom { top: 85%; }
+.spot-label b { color: var(--text); font-size: 9px; letter-spacing: .02em; }
+.spot-label.end { border-color: var(--green); }
+.spot-label.play-end { border-color: var(--amber); color: var(--amber); }
+.spot-label.same-spot { border-color: white; }
+.spot-label.touchdown-end { border-color: var(--green); color: var(--green); }
 .play-result-panel { --result-accent: #bac9c1; display: grid; grid-template-columns: minmax(0, 1fr) auto; border: 1px solid #3d5448; border-left: 5px solid var(--result-accent); background: #08130f; }
 .play-result-primary { min-width: 0; display: grid; grid-template-columns: auto minmax(0, auto) 1fr; align-items: baseline; gap: 9px; padding: 10px 13px; }
 .play-result-primary > span { color: var(--result-accent); font-size: 7px; font-weight: 950; letter-spacing: .14em; }
@@ -661,23 +668,24 @@ button { cursor: pointer; }
   .replay-result-head { align-items: flex-start; flex-direction: column; }
   .result-flags { justify-content: flex-start; }
   .field-replay { height: 205px; margin: 0 0 8px; }
-  .broadcast-situation { --situation-arrow: 14px; top: calc(50% + 25px); min-width: 91px; height: 24px; }
+  .broadcast-situation { min-width: 91px; height: 24px; }
   .broadcast-situation span { min-width: 31px; padding: 0 4px; font-size: 11px; }
   .broadcast-situation b { padding: 0 5px; font-size: 6px; }
   .broadcast-situation i { border-top-width: 12px; border-bottom-width: 12px; }
   .broadcast-situation.direction-right i { right: -14px; border-left-width: 14px; }
   .broadcast-situation.direction-left i { left: -14px; border-right-width: 14px; }
-  .field-play-identity { top: 6px; gap: 4px; padding: 3px 5px; }
+  .broadcast-situation.lane-top { transform: translate(-50%, -50px); }
+  .broadcast-situation.lane-bottom { transform: translate(-50%, 27px); }
+  .field-play-identity { gap: 4px; padding: 3px 5px; }
   .field-play-identity b { font-size: 9px; }
-  .field-play-identity span { font-size: 5px; }
+  .field-play-identity span { display: none; }
   .pass-trajectory path { stroke-width: 3; }
   .incomplete-target i { width: 22px; height: 22px; font-size: 19px; }
-  .incomplete-target span { font-size: 5px; }
-  .turnover-indicator { top: 64%; }
+  .incomplete-target span, .spot-label.play-end { display: none; }
   .uprights-marker > i { width: 17px; height: 23px; }
   .uprights-marker > i::after { top: 20px; height: 17px; }
-  .spot-marker > span { min-width: 60px; padding: 4px; font-size: 5px; }
-  .spot-marker > span b { font-size: 7px; }
+  .spot-label { min-width: 60px; max-width: 92px; padding: 4px; font-size: 5px; }
+  .spot-label b { font-size: 7px; }
   .replay-phases { flex-wrap: wrap; }
   .replay-phases div { flex: 1 1 50%; padding: 6px 7px; }
   .field-spot-key { flex-wrap: wrap; gap: 6px 12px; }

@@ -68,12 +68,6 @@ function officialAction(play: Play) {
   return play.details.actions[play.details.officialActionIndex] ?? play.details.action;
 }
 
-function schematicLane(direction?: string) {
-  if (direction?.includes("left")) return 38;
-  if (direction?.includes("right")) return 62;
-  return 50;
-}
-
 function visualizationFor(play: Play, action: PlayAction): ReplayVisualization {
   if (action.type === "field-goal") return "field-goal";
   if (action.type === "pass") {
@@ -170,7 +164,9 @@ export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
   const visualizationAction = touchdownAction ?? action;
   const visualization = visualizationFor(play, visualizationAction);
   const playDirection = cueLabel(visualizationAction);
-  const lane = schematicLane(visualizationAction.direction);
+  // Gamebook left/right is retained as text only until it can be transformed
+  // with a verified offense-orientation model. The route itself stays neutral.
+  const lane = 50;
   const turnover = Boolean(turnoverLabel(play));
 
   if (touchdownAction || play.kind === "touchdown") {
