@@ -1,4 +1,4 @@
-import type { GameData, Play, PlayAction, PlayPhase, TeamId } from "./types";
+import type { Drive, GameData, Play, PlayAction, PlayPhase, TeamId } from "./types";
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -61,6 +61,71 @@ export interface ReplayPhaseSummary {
 }
 
 export type ReplayFieldMode = "movement" | "no-movement" | "touchdown" | "field-goal" | "unknown";
+export type ReplayVisualization = "run" | "pass-complete" | "pass-incomplete" | "pass-intercepted" | "sack" | "touchdown" | "field-goal" | "other";
+export type ReplayResultState = "positive" | "negative" | "no-gain" | "incomplete" | "touchdown" | "field-goal-good" | "field-goal-missed" | "turnover" | "neutral" | "unknown";
+
+function officialAction(play: Play) {
+  return play.details.actions[play.details.officialActionIndex] ?? play.details.action;
+}
+
+function schematicLane(direction?: string) {
+  if (direction?.includes("left")) return 38;
+  if (direction?.includes("right")) return 62;
+  return 50;
+}
+
+function visualizationFor(play: Play, action: PlayAction): ReplayVisualization {
+  if (action.type === "field-goal") return "field-goal";
+  if (action.type === "pass") {
+    if (action.outcome === "incomplete") return "pass-incomplete";
+    if (action.outcome === "interception" || play.details.events.some((event) => event.type === "interception")) return "pass-intercepted";
+    return "pass-complete";
+  }
+  if (["rush", "scramble", "kneel", "advance"].includes(action.type)) return "run";
+  if (action.type === "sack") return "sack";
+  if (play.details.events.some((event) => event.type === "touchdown") || action.outcome === "touchdown" || play.kind === "touchdown") return "touchdown";
+  return "other";
+}
+
+function visualizationLabel(visualization: ReplayVisualization, action: PlayAction) {
+  if (visualization === "run") return action.type === "scramble" ? "QB SCRAMBLE" : action.type === "kneel" ? "KNEEL" : "RUN";
+  if (visualization === "pass-complete") return "PASS COMPLETE";
+  if (visualization === "pass-incomplete") return "PASS INCOMPLETE";
+  if (visualization === "pass-intercepted") return "PASS INTERCEPTED";
+  if (visualization === "sack") return "SACK";
+  if (visualization === "touchdown") return "TOUCHDOWN";
+  if (visualization === "field-goal") return "FIELD GOAL";
+  return "PLAY";
+}
+
+function cueLabel(action: PlayAction) {
+  return [action.depth, action.direction].filter(Boolean).join(" ").toUpperCase() || undefined;
+}
+
+function turnoverLabel(play: Play) {
+  if (play.details.events.some((event) => event.type === "interception")) return "INTERCEPTION";
+  const recovery = [...play.details.events].reverse().find((event) => event.type === "recovery");
+  if (play.details.events.some((event) => event.type === "fumble") && recovery?.teamId && recovery.teamId !== play.possession) return "FUMBLE LOST";
+  return undefined;
+}
+
+function yardResultLabel(yards: number | null) {
+  if (yards === null) return "RESULT NOT ESTIMATED";
+  if (yards === 0) return "NO GAIN · 0 YARDS";
+  return `${yards > 0 ? "+" : ""}${yards} YARDS`;
+}
+
+function resultPresentation(play: Play, action: PlayAction, movementYards: number | null, fieldGoalOutcome?: "good" | "missed") {
+  const turnover = turnoverLabel(play);
+  if (turnover) return { resultLabel: turnover, resultDetail: movementYards === null ? undefined : yardResultLabel(movementYards), resultState: "turnover" as const };
+  if (play.details.events.some((event) => event.type === "touchdown") || action.outcome === "touchdown" || play.kind === "touchdown") return { resultLabel: "TOUCHDOWN", resultDetail: action.actor, resultState: "touchdown" as const };
+  if (fieldGoalOutcome) return { resultLabel: fieldGoalOutcome === "good" ? "FIELD GOAL · GOOD" : "FIELD GOAL · MISSED", resultDetail: action.yards === undefined ? undefined : `${action.yards} YARDS`, resultState: fieldGoalOutcome === "good" ? "field-goal-good" as const : "field-goal-missed" as const };
+  if (action.outcome === "incomplete") return { resultLabel: `INCOMPLETE · ${movementYards && movementYards !== 0 ? `${movementYards > 0 ? "+" : ""}${movementYards}` : "0"} YARDS`, resultDetail: movementYards && movementYards !== 0 ? "OFFICIAL BALL ADJUSTMENT" : undefined, resultState: movementYards && movementYards < 0 ? "negative" as const : "incomplete" as const };
+  if (movementYards === null) return { resultLabel: "RESULT NOT ESTIMATED", resultDetail: undefined, resultState: "unknown" as const };
+  if (movementYards > 0) return { resultLabel: yardResultLabel(movementYards), resultDetail: "POSITIVE GAIN", resultState: "positive" as const };
+  if (movementYards < 0) return { resultLabel: yardResultLabel(movementYards), resultDetail: "LOSS", resultState: "negative" as const };
+  return { resultLabel: yardResultLabel(0), resultDetail: "BALL DID NOT ADVANCE", resultState: "no-gain" as const };
+}
 
 function downDistance(play: Play) {
   const suffix = ["TH", "ST", "ND", "RD"][play.down] ?? "TH";
@@ -97,24 +162,34 @@ function touchdownPhases(play: Play): ReplayPhaseSummary[] {
 
 export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
   const base = fieldView(game, play);
-  if (!play) return { ...base, mode: "unknown" as ReplayFieldMode, displayFinalPosition: undefined, displayFinalPercent: null, displayMovementYards: null, finalSource: "unknown" as const, noMovement: false, resultLabel: undefined, resultDetail: undefined, phases: [] as ReplayPhaseSummary[], downDistance: undefined, fieldGoal: undefined };
+  if (!play) return { ...base, mode: "unknown" as ReplayFieldMode, visualization: "other" as ReplayVisualization, visualizationLabel: "PLAY", playDirection: undefined, schematicLane: 50, schematicTargetPercent: null, displayFinalPosition: undefined, displayFinalPercent: null, displayMovementYards: null, finalSource: "unknown" as const, noMovement: false, resultLabel: undefined, resultDetail: undefined, resultState: "unknown" as ReplayResultState, turnover: false, phases: [] as ReplayPhaseSummary[], downDistance: undefined, fieldGoal: undefined };
 
-  const action = play.details.actions[play.details.officialActionIndex] ?? play.details.action;
+  const action = officialAction(play);
   const touchdownAction = play.details.actions.find((candidate) => candidate.outcome === "touchdown");
   const fieldGoalAction = play.details.actions.find((candidate) => candidate.type === "field-goal") ?? (action.type === "field-goal" ? action : undefined);
+  const visualizationAction = touchdownAction ?? action;
+  const visualization = visualizationFor(play, visualizationAction);
+  const playDirection = cueLabel(visualizationAction);
+  const lane = schematicLane(visualizationAction.direction);
+  const turnover = Boolean(turnoverLabel(play));
 
   if (touchdownAction || play.kind === "touchdown") {
     const goalAbsolute = base.direction === "right" ? 100 : 0;
     return {
       ...base,
       mode: "touchdown" as const,
+      visualization,
+      visualizationLabel: visualizationLabel(visualization, visualizationAction),
+      playDirection,
+      schematicLane: lane,
+      schematicTargetPercent: null,
       displayFinalPosition: "END ZONE",
       displayFinalPercent: fieldPercent(goalAbsolute),
       displayMovementYards: touchdownAction?.yards ?? null,
       finalSource: "touchdown" as const,
       noMovement: false,
-      resultLabel: "TOUCHDOWN",
-      resultDetail: touchdownAction?.actor,
+      ...resultPresentation(play, touchdownAction ?? action, touchdownAction?.yards ?? null),
+      turnover,
       phases: touchdownPhases(play),
       downDistance: downDistance(play),
       fieldGoal: undefined,
@@ -127,13 +202,18 @@ export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
     return {
       ...base,
       mode: "field-goal" as const,
+      visualization,
+      visualizationLabel: visualizationLabel(visualization, visualizationAction),
+      playDirection,
+      schematicLane: lane,
+      schematicTargetPercent: null,
       displayFinalPosition: "UPRIGHTS",
       displayFinalPercent: fieldPercent(goalAbsolute),
       displayMovementYards: null,
       finalSource: "kick-target" as const,
       noMovement: false,
-      resultLabel: outcome === "good" ? "FIELD GOAL · GOOD" : "FIELD GOAL · MISSED",
-      resultDetail: fieldGoalAction.yards === undefined ? undefined : `${fieldGoalAction.yards} YDS`,
+      ...resultPresentation(play, fieldGoalAction, null, outcome),
+      turnover,
       phases: [] as ReplayPhaseSummary[],
       downDistance: downDistance(play),
       fieldGoal: { outcome, distance: fieldGoalAction.yards, kicker: fieldGoalAction.actor },
@@ -156,19 +236,57 @@ export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
   const displayMovementYards = noMovement ? 0 : startAbsolute !== null && displayFinalAbsolute !== null && base.direction !== "unknown"
     ? Math.round((displayFinalAbsolute - startAbsolute) * (base.direction === "right" ? 1 : -1)) : null;
   const mode: ReplayFieldMode = noMovement ? "no-movement" : displayFinalPosition ? "movement" : "unknown";
-  const resultLabel = noMovement ? action.outcome === "incomplete" ? "INCOMPLETE" : "NO GAIN" : undefined;
+  const targetDistance = action.depth === "deep" ? 24 : 14;
+  const schematicTargetPercent = visualization === "pass-incomplete" && base.startPercent !== null && base.direction !== "unknown"
+    ? clamp(base.startPercent + (base.direction === "right" ? targetDistance : -targetDistance), 12, 88) : null;
   return {
     ...base,
     mode,
+    visualization,
+    visualizationLabel: visualizationLabel(visualization, visualizationAction),
+    playDirection,
+    schematicLane: lane,
+    schematicTargetPercent,
     displayFinalPosition,
     displayFinalPercent,
     displayMovementYards,
     finalSource,
     noMovement,
-    resultLabel,
-    resultDetail: noMovement ? `BALL REMAINS AT ${displayFinalPosition}` : undefined,
+    ...resultPresentation(play, action, displayMovementYards),
+    turnover,
     phases: [] as ReplayPhaseSummary[],
     downDistance: downDistance(play),
     fieldGoal: undefined,
   };
+}
+
+export type DriveResultCategory = "touchdown" | "field-goal-good" | "field-goal-missed" | "fumble" | "interception" | "downs" | "safety" | "punt" | "end" | "other";
+
+export function driveResultView(game: Pick<GameData, "teams">, drive: Drive, play: Play, next?: Play) {
+  const raw = drive.result.trim();
+  const action = officialAction(play);
+  const stateAfter = play.stateAfter;
+  const recovery = [...play.details.events].reverse().find((event) => event.type === "recovery" && event.teamId && event.teamId !== drive.teamId);
+  const interception = [...play.details.events].reverse().find((event) => event.type === "interception" && event.teamId);
+  let category: DriveResultCategory = "other", label = raw.toUpperCase();
+  if (/touchdown/i.test(raw)) { category = "touchdown"; label = "TOUCHDOWN"; }
+  else if (/missed.*field goal|missed fg/i.test(raw) || action.type === "field-goal" && action.outcome !== "good") { category = "field-goal-missed"; label = "FIELD GOAL MISSED"; }
+  else if (/field goal/i.test(raw)) { category = "field-goal-good"; label = "FIELD GOAL GOOD"; }
+  else if (/fumble/i.test(raw) || recovery) { category = "fumble"; label = recovery ? "FUMBLE LOST" : "FUMBLE"; }
+  else if (/interception/i.test(raw) || interception) { category = "interception"; label = "INTERCEPTION"; }
+  else if (/downs/i.test(raw)) { category = "downs"; label = "TURNOVER ON DOWNS"; }
+  else if (/safety/i.test(raw)) { category = "safety"; label = "SAFETY"; }
+  else if (/punt/i.test(raw)) { category = "punt"; label = "PUNT"; }
+  else if (/end of (?:half|game)|half|game/i.test(raw)) { category = "end"; label = raw.toUpperCase(); }
+
+  const knownTeamId = stateAfter?.possession !== drive.teamId ? stateAfter?.possession : recovery?.teamId ?? interception?.teamId
+    ?? (next?.index === play.index + 1 && next.possession !== drive.teamId ? next.possession : undefined);
+  const knownNext = knownTeamId && next?.index === play.index + 1 && next.possession === knownTeamId ? next : undefined;
+  const ballPosition = stateAfter && knownTeamId && stateAfter.possession === knownTeamId ? stateAfter.ballPosition : recovery?.location ?? interception?.location ?? knownNext?.stateBefore.ballPosition;
+  const possessionChange = knownTeamId ? {
+    teamId: knownTeamId,
+    ballPosition,
+    downDistance: knownNext ? downDistance(knownNext) : undefined,
+  } : undefined;
+  return { category, label, teamId: drive.teamId, possessionChange };
 }

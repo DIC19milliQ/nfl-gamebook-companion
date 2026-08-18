@@ -101,9 +101,20 @@ describe("real Gamebook event sequence regressions", () => {
     const touchdown = titans.plays.find((item) => item.quarter === 1 && item.clock === "4:46")!;
     const fieldGoal = titans.plays.find((item) => item.quarter === 4 && item.clock === "0:51")!;
     const missed = titans.plays.find((item) => item.quarter === 2 && item.clock === "0:18")!;
-    expect(replayFieldView(titans, incomplete)).toMatchObject({ mode: "no-movement", finalSource: "state-after", startPosition: "TEN 47", displayFinalPosition: "TEN 47", resultLabel: "INCOMPLETE" });
+    expect(replayFieldView(titans, incomplete)).toMatchObject({ mode: "no-movement", visualization: "pass-incomplete", finalSource: "state-after", startPosition: "TEN 47", displayFinalPosition: "TEN 47", resultLabel: "INCOMPLETE · 0 YARDS", resultState: "incomplete" });
     expect(replayFieldView(titans, touchdown)).toMatchObject({ mode: "touchdown", startPosition: "SF 5", displayFinalPosition: "END ZONE", displayMovementYards: 5, phases: expect.arrayContaining([expect.objectContaining({ label: "XP", result: "GOOD" }), expect.objectContaining({ label: "KICKOFF", result: "OUT OF BOUNDS", position: "SF 40" })]) });
     expect(replayFieldView(titans, fieldGoal)).toMatchObject({ mode: "field-goal", resultLabel: "FIELD GOAL · GOOD", fieldGoal: { outcome: "good", distance: 41 } });
     expect(replayFieldView(titans, missed)).toMatchObject({ mode: "field-goal", resultLabel: "FIELD GOAL · MISSED", fieldGoal: { outcome: "missed", distance: 61 } });
+  });
+
+  it("distinguishes run, completed pass, sack, and retained fumble on the Titans fixture", () => {
+    const run = titans.plays.find((item) => item.quarter === 1 && item.clock === "7:34")!;
+    const pass = titans.plays.find((item) => item.quarter === 1 && item.clock === "14:55")!;
+    const sack = titans.plays.find((item) => item.quarter === 2 && item.clock === "0:24")!;
+    const retainedFumble = titans.plays.find((item) => item.quarter === 2 && item.clock === "4:03")!;
+    expect(replayFieldView(titans, run)).toMatchObject({ visualization: "run", playDirection: "UP THE MIDDLE", resultLabel: "NO GAIN · 0 YARDS", resultState: "no-gain" });
+    expect(replayFieldView(titans, pass)).toMatchObject({ visualization: "pass-complete", playDirection: "SHORT LEFT", resultLabel: "+6 YARDS", resultState: "positive" });
+    expect(replayFieldView(titans, sack)).toMatchObject({ visualization: "sack", resultLabel: "-14 YARDS", resultState: "negative" });
+    expect(replayFieldView(titans, retainedFumble)).toMatchObject({ visualization: "pass-incomplete", turnover: false, resultLabel: "INCOMPLETE · 0 YARDS" });
   });
 });

@@ -71,7 +71,7 @@ Gamebook PDF
 - **1 Play = 順序付き状態変化**: `stateBefore / stateAfter` に加え、原文offset順の `sequence[]`、複数の `actions[]`、phase、provisional/final ruling、確実なspot列を保持します。互換用 `action` は最終公式actionを指します。
 - **phaseとReview正規化**: scrimmage / try / kickoff / administrativeを分け、Replay前後の同一反則再掲はreview境界をまたぐsemantic一致の場合だけ1件へ統合します。原文上の再掲位置はsequenceに残します。
 - **情報を失わないJA**: event sequence順にMain Play、Penalty、Review、Timeout、Injury、XP / Drive summaryを表示し、構造化できないoffset区間だけを `RAW / UNPARSED` として原文保持します。
-- **体験を分離したField**: WATCH ALONGはPossessionと攻撃方向を強調する小型Situation Indicator、GAMEBOOK REPLAYは確定済みPlayのStart → Official Finalと移動方向を主役にします。
+- **体験を分離したField**: WATCH ALONGはPossessionと攻撃方向を強調する小型Situation Indicator、GAMEBOOK REPLAYは確定済みPlayのStart → Official Finalに加え、Runの実線、Passの模式的な投球線、Incompleteの失敗地点cueを描き分けます。GamebookにないXY routeやCatch spotは推定しません。
 - **共通キーボード操作**: WATCH ALONG / GAMEBOOK REPLAYでは `←` / `→` / `Space` でPlay移動できます。入力・ボタンへフォーカス中は発火しません。
 - **Roster統合**: Starterだけでなく、左右のSubstitutions / Did Not Playを行折返し後に復元し、Stats / Defense / Snap / PBP由来PlayerへPositionを統合します。
 - **missingと0を分離**: PDFにPlaytime Percentageがなければsection availabilityを`false`として保持し、UIは0%を推定せず`N/A`を表示します。
