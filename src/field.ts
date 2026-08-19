@@ -33,7 +33,7 @@ export function fieldView(game: Pick<GameData, "teams">, play?: Play) {
   }
   const finalPosition = play?.details.officialEndPosition;
   const absoluteFinal = finalPosition ? absoluteYardLine(finalPosition, game) : null;
-  const puntLanding = play?.details.actions.find((action) => action.type === "punt")?.endPosition;
+  const puntLanding = play?.details.actions?.find((action) => action.type === "punt")?.endPosition;
   const actionEnd = puntLanding ?? play?.details.spots?.filter((spot) => spot.kind === "action-end" && spot.certain).at(-1)?.position;
   const absoluteActionEnd = actionEnd ? absoluteYardLine(actionEnd, game) : null;
   const movementYards = absoluteBall !== null && absoluteFinal !== null && direction !== "unknown" ? Math.round((absoluteFinal - absoluteBall) * (direction === "right" ? 1 : -1)) : null;
