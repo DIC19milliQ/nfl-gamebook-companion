@@ -503,7 +503,7 @@ button { cursor: pointer; }
 .flow-legend i { width: 7px; height: 7px; display: block; background: #53665c; }
 .flow-legend .score-dot { background: var(--green); }
 .flow-legend .turnover-dot { background: var(--red); }
-.flow-quarters { display: grid; grid-template-columns: repeat(4, 1fr); }
+.flow-quarters { display: grid; grid-template-columns: repeat(var(--flow-quarter-count, 4), 1fr); }
 .flow-quarter { border-right: 1px solid var(--line); min-width: 0; }
 .flow-quarter:last-child { border-right: 0; }
 .flow-quarter h3 { height: 54px; margin: 0; padding: 0 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }

@@ -16,6 +16,7 @@ const clockSeconds = (clock: string) => {
 };
 const downLabel = (play?: Play) => play ? `${play.down}${["th", "st", "nd", "rd"][play.down] ?? "th"} & ${play.distance}` : "Ready";
 const situationLabel = (play?: Play) => play ? `${downLabel(play)} · ${play.yardLine}` : "Ready";
+const quarterLabel = (quarter: number) => quarter >= 5 ? "OT" : `Q${quarter}`;
 const resultCode = (result: string) => ({
   Touchdown: "TD", "Field Goal": "FG", Punt: "P", Interception: "INT", Fumble: "FUM",
   Downs: "DN", "Missed FG": "MFG", "End of Game": "END", "In Progress": "LIVE",
@@ -164,7 +165,7 @@ function SituationHeader({ game, play, cursor, controls, showDirection = true }:
   return (
     <div className="current-situation" style={{ "--possession-team": possession?.color ?? "#8bf0a6" } as CSSProperties}>
       <div className="situation-score" aria-label={`${game.teams[0].id} ${visitorScore}, ${game.teams[1].id} ${homeScore}`}><span><i style={{ background: game.teams[0].color }} />{game.teams[0].id}</span><b>{visitorScore}<em>–</em>{homeScore}</b><span>{game.teams[1].id}<i style={{ background: game.teams[1].color }} /></span></div>
-      <div className="situation-clock"><small>GAME CLOCK</small><b>{play ? `Q${play.quarter} · ${play.clock}` : "PREGAME"}</b></div>
+      <div className="situation-clock"><small>GAME CLOCK</small><b>{play ? `${quarterLabel(play.quarter)} · ${play.clock}` : "PREGAME"}</b></div>
       <div className="situation-possession"><small>POSSESSION</small>{play ? <b><TeamMark game={game} teamId={play.possession} compact /> {showDirection && <span>{direction}</span>}</b> : <b>READY</b>}</div>
       <div className="situation-down"><small>SITUATION</small><b>{play ? `${downLabel(play)} · ${play.yardLine}` : "BEFORE KICKOFF"}</b></div>
       {controls && <div className="situation-controls">{controls}</div>}
@@ -266,7 +267,7 @@ function PlayText({ play, language, compact = false }: { play: Play; language: D
 function PlayRow({ game, play, language, onPlayer }: { game: GameData; play: Play; language: DescriptionLanguage; onPlayer?: (id: string) => void }) {
   return (
     <article className="play-row">
-      <div className="play-stamp"><b>Q{play.quarter}</b><span>{play.clock}</span></div>
+      <div className="play-stamp"><b>{quarterLabel(play.quarter)}</b><span>{play.clock}</span></div>
       <div className="play-down"><b>{downLabel(play)}</b><span>{play.yardLine}</span></div>
       <div className="play-copy"><div><TeamMark game={game} teamId={play.possession} compact /><PlayTag kind={play.kind} />{play.noPlay && <span className="no-play">NO PLAY</span>}</div><PlayText play={play} language={language} compact />
         {!!play.playerIds.length && onPlayer && <div className="player-links">{play.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}
@@ -280,7 +281,7 @@ function Locator({ game, cursor, onCursor }: { game: GameData; cursor: number; o
   return (
     <div className="locator">
       <button onClick={() => onCursor(clamp(cursor - 1, -1, game.plays.length - 1))} aria-label="Previous play">←</button>
-      <div className="locator-main"><span>GAME POSITION</span><b>{cursor < 0 ? "Before kickoff" : `Q${play.quarter} ${play.clock} · Play ${cursor + 1} of ${game.plays.length}`}</b>
+      <div className="locator-main"><span>GAME POSITION</span><b>{cursor < 0 ? "Before kickoff" : `${quarterLabel(play.quarter)} ${play.clock} · Play ${cursor + 1} of ${game.plays.length}`}</b>
         <input aria-label="Game position" type="range" min={-1} max={game.plays.length - 1} value={cursor} onChange={(event) => onCursor(number(event.target.value))} />
       </div>
       <button onClick={() => onCursor(clamp(cursor + 1, -1, game.plays.length - 1))} aria-label="Next play">→</button>
@@ -330,11 +331,11 @@ function WatchView({ game, cursor, spoiler, language, onCursor, onPlayer }: { ga
       </section>
       <aside className="side-column">
         <div className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Clock, player, sack, fumble…" /></div>
-        {query && <div className="search-results panel"><h3>PLAY SEARCH <span>{results.length}</span></h3>{results.map((play) => <button key={play.id} onClick={() => onCursor(play.index)}><b><TeamMark game={game} teamId={play.possession} compact /> Q{play.quarter} {play.clock}</b><span lang={language}>{renderPlayDescription(play, language)}</span></button>)}{!results.length && <p className="empty">No visible plays match.</p>}</div>}
-        <div className="panel quick-panel"><h3>QUICK JUMP</h3><div className="jump-grid">{[1, 2, 3, 4].map((quarter) => <button key={quarter} onClick={() => { const index = game.plays.findIndex((play) => play.quarter === quarter); if (index >= 0) onCursor(index); }}>Q{quarter}</button>)}</div></div>
+        {query && <div className="search-results panel"><h3>PLAY SEARCH <span>{results.length}</span></h3>{results.map((play) => <button key={play.id} onClick={() => onCursor(play.index)}><b><TeamMark game={game} teamId={play.possession} compact /> {quarterLabel(play.quarter)} {play.clock}</b><span lang={language}>{renderPlayDescription(play, language)}</span></button>)}{!results.length && <p className="empty">No visible plays match.</p>}</div>}
+        <div className="panel quick-panel"><h3>QUICK JUMP</h3><div className="jump-grid">{[1, 2, 3, 4, ...(game.plays.some((play) => play.quarter >= 5) ? [5] : [])].map((quarter) => <button key={quarter} onClick={() => { const index = game.plays.findIndex((play) => quarter >= 5 ? play.quarter >= 5 : play.quarter === quarter); if (index >= 0) onCursor(index); }}>{quarterLabel(quarter)}</button>)}</div></div>
         <div className="panel"><h3>CURRENT PLAY <span>{current?.details.participants.length ?? 0}</span></h3><ParticipantList game={game} participants={current?.details.participants ?? []} onPlayer={onPlayer} empty="No play participants are visible yet." /></div>
         {drive && <div className="panel"><h3>CURRENT DRIVE <span>{driveParticipants.length}</span></h3><ParticipantList game={game} participants={driveParticipants} onPlayer={onPlayer} empty="No offensive involvement parsed yet." /></div>}
-        {!!recent.length && <div className="panel recent-panel"><h3>RECENT PLAYS</h3>{recent.map((play) => <button key={play.id} onClick={() => onCursor(play.index)}><b>Q{play.quarter} {play.clock} · {play.yardLine}</b><span>{renderPlayDescription(play, language)}</span></button>)}</div>}
+        {!!recent.length && <div className="panel recent-panel"><h3>RECENT PLAYS</h3>{recent.map((play) => <button key={play.id} onClick={() => onCursor(play.index)}><b>{quarterLabel(play.quarter)} {play.clock} · {play.yardLine}</b><span>{renderPlayDescription(play, language)}</span></button>)}</div>}
       </aside>
     </div>
   );
@@ -379,7 +380,7 @@ function ReplayView({ game, cursor, language, summary, onNext, onBack, onPlayer 
           {completedDrive && <DriveSummary drive={completedDrive} game={game} play={revealed} next={next} />}
           <div className="supporting-play"><div className="supporting-head"><span>SUPPORTING TEXT · EVENT ORDER</span><div className="result-flags"><PlayTag kind={revealed.kind} />{revealed.noPlay && <span className="no-play">NO PLAY</span>}{revealed.details.events.some((event) => event.type === "touchdown") && <b>TD</b>}{revealed.details.events.some((event) => event.type === "fumble" || event.type === "interception") && <b className="danger">TURNOVER EVENT</b>}{revealed.details.penalties.length > 0 && <b className="penalty-flag">PENALTY</b>}</div></div><PlayText play={revealed} language={language} />{!!revealed.playerIds.length && <div className="player-links">{revealed.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}</div>
         </div> : <div className="opening-card"><span>OPENING SNAP · RESULT LOCKED</span><Field game={game} play={next} variant="situation" /><p>Only the first pre-snap situation is visible. Press Space or → to reveal the play.</p></div>}
-        {next && <div className="next-situation-line"><span>NEXT</span><b>Q{next.quarter} {next.clock}</b><strong><TeamMark game={game} teamId={next.possession} compact /> {next.possession === game.teams[0].id ? "→" : "←"}</strong><em>{situationLabel(next)}</em><small>RESULT LOCKED</small></div>}</>}
+        {next && <div className="next-situation-line"><span>NEXT</span><b>{quarterLabel(next.quarter)} {next.clock}</b><strong><TeamMark game={game} teamId={next.possession} compact /> {next.possession === game.teams[0].id ? "→" : "←"}</strong><em>{situationLabel(next)}</em><small>RESULT LOCKED</small></div>}</>}
         <div className="replay-controls"><button className="back-play" disabled={!summary && cursor < 0} onClick={onBack}>← {summary ? "LAST PLAY" : "Previous"}</button><button className="next-play-button" disabled={summary === "final"} onClick={onNext}><span>{summary === "halftime" ? "START SECOND HALF" : summary === "regulation" ? "START OVERTIME" : "NEXT PLAY"}</span><i>→</i></button></div>
       </div>
     </div>
@@ -387,10 +388,11 @@ function ReplayView({ game, cursor, language, summary, onNext, onBack, onPlayer 
 }
 
 function FlowTab({ game, visibleDrives, onDrive }: { game: GameData; visibleDrives: Drive[]; onDrive: (drive: Drive) => void }) {
+  const quarters = [1, 2, 3, 4, ...(game.plays.some((play) => play.quarter >= 5) ? [5] : [])];
   return (
     <div className="flow-board">
       <div className="flow-legend"><span><i className="score-dot" />SCORE</span><span><i className="turnover-dot" />TURNOVER</span><span><i />OTHER</span></div>
-      <div className="flow-quarters">{[1, 2, 3, 4].map((quarter) => <div key={quarter} className="flow-quarter"><h3><span>Q{quarter}</span><small>{visibleDrives.filter((drive) => drive.quarter === quarter).length} drives</small></h3><div className="flow-track">{visibleDrives.filter((drive) => drive.quarter === quarter).map((drive) => {
+      <div className="flow-quarters" style={{ "--flow-quarter-count": quarters.length } as CSSProperties}>{quarters.map((quarter) => <div key={quarter} className="flow-quarter"><h3><span>{quarterLabel(quarter)}</span><small>{visibleDrives.filter((drive) => quarter >= 5 ? drive.quarter >= 5 : drive.quarter === quarter).length} drives</small></h3><div className="flow-track">{visibleDrives.filter((drive) => quarter >= 5 ? drive.quarter >= 5 : drive.quarter === quarter).map((drive) => {
         const scoring = /Touchdown|Field Goal/.test(drive.result), turnover = /Interception|Fumble|Downs/.test(drive.result);
         return <button key={drive.id} className={scoring ? "scoring" : turnover ? "turnover" : ""} style={{ "--team-color": team(game, drive.teamId).color } as CSSProperties} onClick={() => onDrive(drive)}><span className="flow-team">{team(game, drive.teamId).homeAway === "visitor" ? "VISITOR" : "HOME"} · {drive.teamId}</span><b>{resultCode(drive.result)}</b><small>{drive.startClock} · {drive.plays} plays</small></button>;
       })}</div></div>)}</div>
@@ -408,8 +410,9 @@ function DrivesTab({ game, visibleDrives, openDrive, setOpenDrive, language, onP
 function PlaysTab({ game, visiblePlays, language, onPlayer }: { game: GameData; visiblePlays: Play[]; language: DescriptionLanguage; onPlayer: (id: string) => void }) {
   const [query, setQuery] = useState("");
   const [quarter, setQuarter] = useState(0);
-  const filtered = visiblePlays.filter((play) => (!quarter || play.quarter === quarter) && (!query || `${play.clock} ${play.yardLine} ${play.description}`.toLowerCase().includes(query.toLowerCase())));
-  return <div><div className="filter-bar"><div className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search every visible play…" /></div><div className="quarter-filter"><button className={!quarter ? "active" : ""} onClick={() => setQuarter(0)}>ALL</button>{[1,2,3,4].map((q) => <button key={q} className={quarter === q ? "active" : ""} onClick={() => setQuarter(q)}>Q{q}</button>)}</div><span>{filtered.length} plays</span></div><div className="pbp-list">{filtered.map((play) => <PlayRow key={play.id} game={game} play={play} language={language} onPlayer={onPlayer} />)}</div></div>;
+  const quarters = [1, 2, 3, 4, ...(game.plays.some((play) => play.quarter >= 5) ? [5] : [])];
+  const filtered = visiblePlays.filter((play) => (!quarter || (quarter >= 5 ? play.quarter >= 5 : play.quarter === quarter)) && (!query || `${play.clock} ${play.yardLine} ${play.description}`.toLowerCase().includes(query.toLowerCase())));
+  return <div><div className="filter-bar"><div className="search-box"><span>⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search every visible play…" /></div><div className="quarter-filter"><button className={!quarter ? "active" : ""} onClick={() => setQuarter(0)}>ALL</button>{quarters.map((q) => <button key={q} className={quarter === q ? "active" : ""} onClick={() => setQuarter(q)}>{quarterLabel(q)}</button>)}</div><span>{filtered.length} plays</span></div><div className="pbp-list">{filtered.map((play) => <PlayRow key={play.id} game={game} play={play} language={language} onPlayer={onPlayer} />)}</div></div>;
 }
 
 function playerSummary(player: Player) {
