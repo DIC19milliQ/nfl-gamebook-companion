@@ -40,7 +40,7 @@ function scoreAt(game: GameData, cursor: number) {
   return last ? [last.visitorScore, last.homeScore] : [0, 0];
 }
 
-type ReplaySummaryKind = "halftime" | "final";
+type ReplaySummaryKind = "halftime" | "regulation" | "final";
 
 function scoreByPeriod(game: GameData, includeOvertime: boolean) {
   const periods = includeOvertime ? [1, 2, 3, 4, 5] : [1, 2, 3, 4];
@@ -56,19 +56,19 @@ function scoreByPeriod(game: GameData, includeOvertime: boolean) {
 }
 
 function ReplayScoreSummary({ game, kind }: { game: GameData; kind: ReplaySummaryKind }) {
-  const overtime = kind === "final" && (game.plays.some((play) => play.quarter > 4) || game.scoring.some((score) => score.quarter > 4));
+  const overtime = game.plays.some((play) => play.quarter >= 5);
   const periodScores = scoreByPeriod(game, overtime);
-  const columns = kind === "halftime" ? ["Q1", "Q2"] : overtime ? ["Q1", "Q2", "Q3", "Q4", "OT"] : ["Q1", "Q2", "Q3", "Q4"];
+  const columns = kind === "halftime" ? ["Q1", "Q2"] : kind === "regulation" || !overtime ? ["Q1", "Q2", "Q3", "Q4"] : ["Q1", "Q2", "Q3", "Q4", "OT"];
   const visibleScores = periodScores.slice(0, columns.length);
-  const totals: [number, number] = kind === "halftime"
-    ? visibleScores.reduce<[number, number]>((sum, score) => [sum[0] + score[0], sum[1] + score[1]], [0, 0])
-    : [game.teams[0].score, game.teams[1].score];
-  const title = kind === "halftime" ? "HALFTIME" : "FINAL";
+  const totals: [number, number] = kind === "final"
+    ? [game.teams[0].score, game.teams[1].score]
+    : visibleScores.reduce<[number, number]>((sum, score) => [sum[0] + score[0], sum[1] + score[1]], [0, 0]);
+  const title = kind === "halftime" ? "HALFTIME" : kind === "regulation" ? "END OF REGULATION" : totals[0] === totals[1] ? "FINAL · TIE" : "FINAL";
   return (
     <section className={`replay-summary replay-summary-${kind}`} aria-label={`${title} score summary`}>
       <span className="replay-summary-label">{title} SUMMARY</span>
       <div className="replay-summary-hero"><TeamMark game={game} teamId={game.teams[0].id} /><h2>{game.teams[0].id} <b>{totals[0]}</b><i>—</i><b>{totals[1]}</b> {game.teams[1].id}</h2><TeamMark game={game} teamId={game.teams[1].id} /></div>
-      <div className="replay-summary-table-wrap"><table className="replay-summary-table"><thead><tr><th>{title}</th>{columns.map((column) => <th key={column}>{column}</th>)}<th>{kind === "halftime" ? "1ST HALF" : "FINAL"}</th></tr></thead><tbody>
+      <div className="replay-summary-table-wrap"><table className="replay-summary-table"><thead><tr><th>{title}</th>{columns.map((column) => <th key={column}>{column}</th>)}<th>{kind === "halftime" ? "1ST HALF" : kind === "regulation" ? "REGULATION TOTAL" : "FINAL"}</th></tr></thead><tbody>
         {game.teams.map((item, teamIndex) => <tr key={item.id}><th><span>{item.homeAway === "visitor" ? "AWAY" : "HOME"}</span>{item.id}</th>{visibleScores.map((score, index) => <td key={columns[index]}>{score[teamIndex]}</td>)}<td className="summary-total">{totals[teamIndex]}</td></tr>)}
       </tbody></table></div>
     </section>
@@ -353,13 +353,13 @@ function DriveSummary({ drive, game, play, next }: { drive: Drive; game: GameDat
   );
 }
 
-function ReplayView({ game, cursor, language, summary, onNext, onBack, onRestart, onPlayer }: { game: GameData; cursor: number; language: DescriptionLanguage; summary: ReplaySummaryKind | null; onNext: () => void; onBack: () => void; onRestart: () => void; onPlayer: (id: string) => void }) {
+function ReplayView({ game, cursor, language, summary, onNext, onBack, onPlayer }: { game: GameData; cursor: number; language: DescriptionLanguage; summary: ReplaySummaryKind | null; onNext: () => void; onBack: () => void; onPlayer: (id: string) => void }) {
   const revealed = game.plays[cursor];
   const next = game.plays[cursor + 1];
   const completedDrive = revealed?.driveId ? game.drives.find((drive) => drive.id === revealed.driveId && drive.lastPlayIndex === cursor) : undefined;
   return (
     <div className="replay-shell" data-play-anchor>
-      <SituationHeader game={game} play={revealed} cursor={cursor} showDirection={false} controls={<div className="replay-progress"><span>{summary ? `${summary.toUpperCase()} SUMMARY` : `PLAY ${Math.max(0, cursor + 1)} / ${game.plays.length}`}</span><i><b style={{ width: `${((cursor + 1) / game.plays.length) * 100}%` }} /></i><em>{summary ? "SCOREBOARD" : "NEXT RESULT LOCKED"}</em></div>} />
+      <SituationHeader game={game} play={revealed} cursor={cursor} showDirection={false} controls={<div className="replay-progress"><span>{summary === "regulation" ? "END OF REGULATION" : summary ? `${summary.toUpperCase()} SUMMARY` : `PLAY ${Math.max(0, cursor + 1)} / ${game.plays.length}`}</span><i><b style={{ width: `${((cursor + 1) / game.plays.length) * 100}%` }} /></i><em>{summary ? "SCOREBOARD" : "NEXT RESULT LOCKED"}</em></div>} />
       <div className="replay-stage">
         {summary ? <ReplayScoreSummary game={game} kind={summary} /> : <>{revealed ? <div className="replay-result">
           <Field game={game} play={revealed} variant="replay" />
@@ -368,7 +368,7 @@ function ReplayView({ game, cursor, language, summary, onNext, onBack, onRestart
           <div className="supporting-play"><div className="supporting-head"><span>SUPPORTING TEXT · EVENT ORDER</span><div className="result-flags"><PlayTag kind={revealed.kind} />{revealed.noPlay && <span className="no-play">NO PLAY</span>}{revealed.details.events.some((event) => event.type === "touchdown") && <b>TD</b>}{revealed.details.events.some((event) => event.type === "fumble" || event.type === "interception") && <b className="danger">TURNOVER EVENT</b>}{revealed.details.penalties.length > 0 && <b className="penalty-flag">PENALTY</b>}</div></div><PlayText play={revealed} language={language} />{!!revealed.playerIds.length && <div className="player-links">{revealed.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}</div>
         </div> : <div className="opening-card"><span>OPENING SNAP · RESULT LOCKED</span><Field game={game} play={next} variant="situation" /><p>Only the first pre-snap situation is visible. Press Space or → to reveal the play.</p></div>}
         {next && <div className="next-situation-line"><span>NEXT</span><b>Q{next.quarter} {next.clock}</b><strong><TeamMark game={game} teamId={next.possession} compact /> {next.possession === game.teams[0].id ? "→" : "←"}</strong><em>{situationLabel(next)}</em><small>RESULT LOCKED</small></div>}</>}
-        <div className="replay-controls"><button className="back-play" disabled={!summary && cursor < 0} onClick={onBack}>← {summary ? "LAST PLAY" : "Previous"}</button>{summary === "final" ? <button className="next-play-button replay-restart-button" onClick={onRestart}><span>REPLAY FROM KICKOFF</span><i>↺</i></button> : <button className="next-play-button" onClick={onNext}><span>{summary === "halftime" ? "START SECOND HALF" : "NEXT PLAY"}</span><i>→</i></button>}</div>
+        <div className="replay-controls"><button className="back-play" disabled={!summary && cursor < 0} onClick={onBack}>← {summary ? "LAST PLAY" : "Previous"}</button><button className="next-play-button" disabled={summary === "final"} onClick={onNext}><span>{summary === "halftime" ? "START SECOND HALF" : summary === "regulation" ? "START OVERTIME" : "NEXT PLAY"}</span><i>→</i></button></div>
       </div>
     </div>
   );
@@ -530,9 +530,13 @@ export default function App() {
     if (!game) return;
     const halftimeLastPlay = game.plays.reduce((last, play, index) => play.quarter === 2 ? index : last, -1);
     const thirdQuarterFirstPlay = game.plays.findIndex((play) => play.quarter === 3);
+    const regulationLastPlay = game.plays.reduce((last, play, index) => play.quarter === 4 ? index : last, -1);
+    const overtimeFirstPlay = game.plays.findIndex((play) => play.quarter >= 5);
     if (replaySummary === "halftime") { setReplaySummary(null); setCursor(thirdQuarterFirstPlay); return; }
+    if (replaySummary === "regulation") { setReplaySummary(null); setCursor(overtimeFirstPlay); return; }
     if (replaySummary === "final") return;
     if (cursor === halftimeLastPlay && thirdQuarterFirstPlay >= 0) { setReplaySummary("halftime"); return; }
+    if (cursor === regulationLastPlay && overtimeFirstPlay >= 0) { setReplaySummary("regulation"); return; }
     if (cursor === game.plays.length - 1) { setReplaySummary("final"); return; }
     setCursor((value) => clamp(value + 1, -1, game.plays.length - 1));
   }, [cursor, game, replaySummary]);
@@ -540,7 +544,6 @@ export default function App() {
     if (replaySummary) { setReplaySummary(null); return; }
     setCursor((value) => clamp(value - 1, -1, game?.plays.length ? game.plays.length - 1 : -1));
   }, [game, replaySummary]);
-  const replayRestart = useCallback(() => { setReplaySummary(null); setCursor(-1); }, []);
   useEffect(() => {
     if (!game || mode === "explore" || playerId) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -575,5 +578,5 @@ export default function App() {
   }, [game, mode, safeCursor]);
   if (loading) return <LoadingScreen progress={progress} label={loadingLabel} />;
   if (!game) return <Landing onFile={loadFile} error={error} />;
-  return <div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onRestart={replayRestart} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No external data or AI APIs</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div>;
+  return <div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No external data or AI APIs</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div>;
 }

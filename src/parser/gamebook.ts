@@ -241,11 +241,11 @@ function parsePlays(pages: RawPage[], teams: [Team, Team]) {
   let possession: TeamId = teams[1].id;
   let lastPlay: Play | undefined;
   for (const page of pbpPages) {
-    const quarterHeader = page.text.match(/(First|Second|Third|Fourth) Quarter/);
-    if (quarterHeader) quarter = ["First", "Second", "Third", "Fourth"].indexOf(quarterHeader[1]) + 1;
+    const quarterHeader = page.text.match(/(First|Second|Third|Fourth) Quarter|\bOvertime\b/);
+    if (quarterHeader) quarter = quarterHeader[0] === "Overtime" ? 5 : ["First", "Second", "Third", "Fourth"].indexOf(quarterHeader[1]) + 1;
     for (const line of page.lines) {
       const text = line.text;
-      if (!text || text.includes(`${teams[0].name} vs ${teams[1].name} at`) || /Play By Play \d/.test(text) || /^(First|Second|Third|Fourth) Quarter$/.test(text)) continue;
+      if (!text || text.includes(`${teams[0].name} vs ${teams[1].name} at`) || /Play By Play \d/.test(text) || /^(First|Second|Third|Fourth) Quarter$|^Overtime$/.test(text)) continue;
       const driveHeader = [...teamNameMap.entries()].find(([name]) => text.startsWith(`${name} at `));
       if (driveHeader) {
         possession = driveHeader[1];

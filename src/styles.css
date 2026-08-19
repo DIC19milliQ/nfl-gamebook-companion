@@ -454,7 +454,8 @@ button { cursor: pointer; }
 .next-situation-line > small { color: var(--muted); }
 .replay-controls { position: sticky; bottom: 8px; z-index: 20; display: grid; grid-template-columns: 140px 1fr; border-top: 1px solid #365445; background: #0b1611; box-shadow: 0 -10px 22px rgba(2, 7, 5, .52); }
 .next-play-button { min-height: 54px; width: 100%; border: 0; background: var(--green); color: #07100d; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; font-size: 12px; font-weight: 950; letter-spacing: .14em; }
-.next-play-button:hover { background: #b1fac0; }
+.next-play-button:hover:not(:disabled) { background: #b1fac0; }
+.next-play-button:disabled { background: #31443a; color: #8e9c94; cursor: default; }
 .next-play-button i { font-style: normal; font-size: 24px; }
 .back-play { width: 100%; border: 0; border-right: 1px solid var(--line); background: #0b1611; color: var(--muted); min-height: 46px; font-size: 10px; }
 .back-play:hover:not(:disabled) { color: var(--text); }
