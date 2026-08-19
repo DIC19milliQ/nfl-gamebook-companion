@@ -338,7 +338,7 @@ button { cursor: pointer; }
 .pass-trajectory path { fill: none; stroke: var(--possession-color); stroke-width: 4; stroke-dasharray: 3 3; stroke-linecap: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--possession-color) 70%, transparent)); }
 .trajectory-pass-incomplete path { stroke-width: 3; stroke-dasharray: 2 4; opacity: .95; }
 .punt-trajectory { position: absolute; z-index: 5; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
-.punt-trajectory path { fill: none; stroke: var(--possession-color); stroke-width: 8; stroke-dasharray: 4 7; stroke-linecap: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--possession-color) 70%, transparent)); }
+.punt-trajectory path { fill: none; stroke: var(--possession-color); stroke-width: 9; stroke-dasharray: 15 10; stroke-linecap: round; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--possession-color) 70%, transparent)); }
 .incomplete-target { position: absolute; z-index: 10; width: 0; height: 0; pointer-events: none; }
 .incomplete-target i { position: absolute; left: 0; top: 0; width: 27px; height: 27px; transform: translate(-50%, -50%); display: grid; place-items: center; border: 2px solid #e8f0ec; border-radius: 50%; background: #14211c; color: white; font: 24px/1 Arial, sans-serif; font-style: normal; box-shadow: 0 0 0 3px #07120d99; }
 .incomplete-target span { position: absolute; top: 18px; left: 0; transform: translateX(-50%); padding: 3px 5px; border: 1px solid #99aaa1; background: #07120deb; color: white; font-size: 6px; font-weight: 950; letter-spacing: .1em; white-space: nowrap; }
@@ -374,8 +374,8 @@ button { cursor: pointer; }
 .event-flag { position: absolute; z-index: 13; width: 0; height: 0; transform: translate(-50%, -50%); pointer-events: auto; }
 .event-flag.lane-top { top: 32%; }
 .event-flag.lane-bottom { top: 68%; }
-.event-flag::before { content: ""; position: absolute; left: -8px; top: -9px; width: 14px; height: 10px; border-radius: 2px 5px 4px 2px; background: #f5ce38; box-shadow: 0 0 0 2px #07120d, 0 2px 5px #0008; transform: skewY(-13deg); }
-.event-flag::after { content: ""; position: absolute; left: -9px; top: -10px; width: 2px; height: 19px; background: #f7f0cb; box-shadow: 0 0 0 1px #07120d; transform: rotate(-7deg); }
+.event-flag::before { content: ""; position: absolute; left: -10px; top: -12px; width: 20px; height: 14px; border-radius: 3px 6px 5px 3px; background: #f5ce38; box-shadow: 0 0 0 2px #07120d, 0 2px 5px #0008; transform: skewY(-13deg); }
+.event-flag::after { content: ""; position: absolute; left: -11px; top: -13px; width: 2px; height: 25px; background: #f7f0cb; box-shadow: 0 0 0 1px #07120d; transform: rotate(-7deg); }
 .event-flag.challenge::before { background: #d94742; }
 .spot-label.same-spot { border-color: white; }
 .spot-label.touchdown-end { border-color: var(--green); color: var(--green); }

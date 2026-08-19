@@ -33,7 +33,8 @@ export function fieldView(game: Pick<GameData, "teams">, play?: Play) {
   }
   const finalPosition = play?.details.officialEndPosition;
   const absoluteFinal = finalPosition ? absoluteYardLine(finalPosition, game) : null;
-  const actionEnd = play?.details.spots?.filter((spot) => spot.kind === "action-end" && spot.certain).at(-1)?.position;
+  const puntLanding = play?.details.actions.find((action) => action.type === "punt")?.endPosition;
+  const actionEnd = puntLanding ?? play?.details.spots?.filter((spot) => spot.kind === "action-end" && spot.certain).at(-1)?.position;
   const absoluteActionEnd = actionEnd ? absoluteYardLine(actionEnd, game) : null;
   const movementYards = absoluteBall !== null && absoluteFinal !== null && direction !== "unknown" ? Math.round((absoluteFinal - absoluteBall) * (direction === "right" ? 1 : -1)) : null;
   return {
@@ -160,10 +161,11 @@ export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
   const base = fieldView(game, play);
   if (!play) return { ...base, mode: "unknown" as ReplayFieldMode, visualization: "other" as ReplayVisualization, visualizationLabel: "PLAY", playDirection: undefined, schematicLane: 50, schematicTargetPercent: null, displayFinalPosition: undefined, displayFinalPercent: null, displayMovementYards: null, finalSource: "unknown" as const, noMovement: false, resultLabel: undefined, resultDetail: undefined, resultState: "unknown" as ReplayResultState, turnover: false, phases: [] as ReplayPhaseSummary[], downDistance: undefined, fieldGoal: undefined };
 
-  const action = officialAction(play);
+  const puntAction = play.details.actions.find((candidate) => candidate.type === "punt");
+  const action = puntAction ?? officialAction(play);
   const touchdownAction = play.details.actions.find((candidate) => candidate.outcome === "touchdown");
   const fieldGoalAction = play.details.actions.find((candidate) => candidate.type === "field-goal") ?? (action.type === "field-goal" ? action : undefined);
-  const visualizationAction = touchdownAction ?? action;
+  const visualizationAction = puntAction ?? touchdownAction ?? action;
   const visualization = visualizationFor(play, visualizationAction);
   const playDirection = cueLabel(visualizationAction);
   // Gamebook left/right is retained as text only until it can be transformed
