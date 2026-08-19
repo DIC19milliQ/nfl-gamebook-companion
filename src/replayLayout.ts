@@ -12,6 +12,8 @@ interface LayoutInput {
   firstDownPercent: number | null;
   noMovement: boolean;
   turnover: boolean;
+  hasPenalty?: boolean;
+  hasChallenge?: boolean;
 }
 
 interface Placement {
@@ -30,6 +32,8 @@ export interface ReplayFieldLayout {
   turnover: Placement;
   los: Placement;
   firstDown: Placement;
+  penaltyFlag: Placement;
+  challengeFlag: Placement;
 }
 
 interface Rect {
@@ -99,8 +103,8 @@ function pathRects(start: number, end: number, apexY: number, isPass: boolean) {
 function buildLayout(input: LayoutInput, passApexY: number) {
   const start = input.startPercent ?? 50;
   const end = input.primaryEndPercent ?? start;
-  const isPass = input.visualization.startsWith("pass-");
-  const occupied = pathRects(start, end, passApexY, isPass);
+  const isArc = input.visualization.startsWith("pass-") || input.visualization === "punt";
+  const occupied = pathRects(start, end, passApexY, isArc);
   let score = 0;
 
   const startXs = [clamp(start, 11, 89), clamp(start + (start < 50 ? 5 : -5), 11, 89)];
@@ -140,6 +144,16 @@ function buildLayout(input: LayoutInput, passApexY: number) {
     : { placement: { x: turnoverXs[0], lane: oppositeArc }, score: 0 };
   score += placedTurnover.score;
 
+  const eventXs = [82, 18, 68, 32, 50];
+  const placedPenaltyFlag = input.hasPenalty
+    ? choose(candidates(eventXs, ["top", "bottom"], 8, "top", "near"), occupied)
+    : { placement: { x: eventXs[0], lane: "top" as const }, score: 0 };
+  score += placedPenaltyFlag.score;
+  const placedChallengeFlag = input.hasChallenge
+    ? choose(candidates(eventXs, ["bottom", "top"], 8, "bottom", "near"), occupied)
+    : { placement: { x: eventXs[1], lane: "bottom" as const }, score: 0 };
+  score += placedChallengeFlag.score;
+
   const los = choose(candidates(
     [clamp(start - 4, 4, 96), clamp(start + 4, 4, 96), clamp(start, 4, 96)],
     ["bottom", "top"], 7, "bottom",
@@ -167,6 +181,8 @@ function buildLayout(input: LayoutInput, passApexY: number) {
       turnover: placedTurnover.placement,
       los,
       firstDown,
+      penaltyFlag: placedPenaltyFlag.placement,
+      challengeFlag: placedChallengeFlag.placement,
     } satisfies ReplayFieldLayout,
     score,
   };
@@ -178,7 +194,7 @@ function buildLayout(input: LayoutInput, passApexY: number) {
  * a small set of broadcast-like rails and scored against the route and one another.
  */
 export function planReplayFieldLayout(input: LayoutInput): ReplayFieldLayout {
-  if (!input.visualization.startsWith("pass-")) return buildLayout(input, 50).layout;
+  if (!input.visualization.startsWith("pass-") && input.visualization !== "punt") return buildLayout(input, 50).layout;
   const upper = buildLayout(input, 27);
   const lower = buildLayout(input, 73);
   return upper.score <= lower.score ? upper.layout : lower.layout;

@@ -139,7 +139,8 @@ function Field({ game, play, variant = "situation" }: { game: GameData; play?: P
   const directionTeam = play ? team(game, play.possession) : undefined;
   const primaryEnd = replay.mode === "movement" ? replay.actionEndPercent ?? replay.displayFinalPercent : replay.displayFinalPercent;
   const isPass = replay.visualization.startsWith("pass-");
-  const hasPath = variant === "replay" && !isPass && ["movement", "touchdown"].includes(replay.mode) && view.startPercent !== null && primaryEnd !== null;
+  const isPunt = replay.visualization === "punt";
+  const hasPath = variant === "replay" && !isPass && !isPunt && ["movement", "touchdown"].includes(replay.mode) && view.startPercent !== null && primaryEnd !== null;
   const pathLeft = hasPath ? Math.min(view.startPercent!, primaryEnd!) : 0;
   const pathWidth = hasPath ? Math.abs(primaryEnd! - view.startPercent!) : 0;
   const adjustmentStart = view.actionEndPercent ?? (replay.visualization === "pass-incomplete" ? view.startPercent : null);
@@ -151,6 +152,12 @@ function Field({ game, play, variant = "situation" }: { game: GameData; play?: P
   const passEnd = replay.visualization === "pass-incomplete" ? replay.schematicTargetPercent : primaryEnd;
   const hasPassPath = variant === "replay" && isPass && view.startPercent !== null && passEnd !== null;
   const passControlX = hasPassPath ? (view.startPercent! + passEnd!) / 2 : 50;
+  const puntEnd = view.actionEndPercent ?? primaryEnd;
+  const hasPuntPath = variant === "replay" && isPunt && view.startPercent !== null && puntEnd !== null;
+  const puntControlX = hasPuntPath ? (view.startPercent! + puntEnd!) / 2 : 50;
+  const hasPuntReturn = isPunt && hasAdjustment;
+  const hasPenalty = Boolean(play?.details.penalties.length);
+  const hasChallenge = Boolean(play?.details.reviews.some((review) => review.source === "team-challenge"));
   const layout = planReplayFieldLayout({
     visualization: replay.visualization,
     visualizationLabel: replay.visualizationLabel,
@@ -163,6 +170,8 @@ function Field({ game, play, variant = "situation" }: { game: GameData; play?: P
     firstDownPercent: view.firstDownPercent,
     noMovement: replay.noMovement,
     turnover: replay.turnover,
+    hasPenalty,
+    hasChallenge,
   });
   const annotationStyle = (placement: { x: number; lane: ReplayLabelLane }) => ({ left: `${placement.x}%` } as CSSProperties);
   return (
@@ -179,14 +188,17 @@ function Field({ game, play, variant = "situation" }: { game: GameData; play?: P
       {variant === "replay" && replay.mode !== "field-goal" && <div className={`field-play-identity lane-${layout.identity.lane}`} style={annotationStyle(layout.identity)} title="Gamebook side wording is shown as text only; the route does not map it to screen up/down"><b>{replay.visualizationLabel}</b>{replay.playDirection && <span>{replay.playDirection} · TEXT ONLY</span>}</div>}
       {hasPath && <div className={`play-path path-${replay.visualization} ${replay.visualizationLabel === "QB SCRAMBLE" ? "path-scramble" : ""} direction-${primaryEnd! >= view.startPercent! ? "right" : "left"}`} style={{ left: `${pathLeft}%`, width: `${Math.max(pathWidth, .8)}%`, top: `${layout.pathY}%` }}><i>{primaryEnd! >= view.startPercent! ? "›" : "‹"}</i></div>}
       {hasPassPath && <svg className={`pass-trajectory trajectory-${replay.visualization}`} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={`M ${view.startPercent} ${layout.pathY} Q ${passControlX} ${layout.passApexY} ${passEnd} ${layout.pathY}`} /></svg>}
+      {hasPuntPath && <svg className="punt-trajectory" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Punt flight"><path d={`M ${view.startPercent} ${layout.pathY} Q ${puntControlX} ${layout.passApexY} ${puntEnd} ${layout.pathY}`} /></svg>}
       {variant === "replay" && replay.visualization === "pass-incomplete" && replay.schematicTargetPercent !== null && <div className="incomplete-target" style={{ left: `${replay.schematicTargetPercent}%`, top: `${layout.pathY}%` }} title="Schematic target distance; official ball position remains at START"><i>×</i><span>INCOMPLETE</span></div>}
       {variant === "replay" && replay.mode === "field-goal" && view.startPercent !== null && replay.displayFinalPercent !== null && <><div className={`field-goal-trajectory direction-${view.direction}`} style={{ left: `${kickLeft}%`, width: `${Math.max(kickWidth, 1)}%` }}><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={view.direction === "right" ? "M 0 82 Q 52 3 100 42" : "M 100 82 Q 48 3 0 42"} /></svg></div><div className="uprights-marker" style={{ left: `${replay.displayFinalPercent}%` }}><i /><span>UPRIGHTS</span></div></>}
       {variant === "replay" && view.startPercent !== null && !replay.noMovement && <><div className="spot-marker start" style={{ left: `${view.startPercent}%` }}><i /></div><div className={`spot-label start lane-${layout.start.lane}`} style={annotationStyle(layout.start)}>{replay.mode === "field-goal" ? "KICK ORIGIN" : "START"}<b>{view.startPosition}</b></div></>}
       {variant === "replay" && replay.noMovement && view.startPercent !== null && <><div className="spot-marker same-spot" style={{ left: `${view.startPercent}%` }}><i /></div><div className={`spot-label same-spot lane-${layout.start.lane}`} style={annotationStyle(layout.start)}>START / FINAL<b>{view.startPosition}</b></div></>}
-      {hasAdjustment && <div className="official-adjustment" style={{ left: `${adjustmentLeft}%`, width: `${Math.max(adjustmentWidth, .8)}%` }}><i>{replay.displayFinalPercent! >= adjustmentStart! ? "›" : "‹"}</i></div>}
-      {variant === "replay" && view.actionEndPercent !== null && hasAdjustment && <><div className="spot-marker play-end" style={{ left: `${view.actionEndPercent}%` }}><i /></div><div className={`spot-label play-end lane-${layout.playEnd.lane}`} style={annotationStyle(layout.playEnd)}>PLAY END<b>{view.actionEndPosition}</b></div></>}
+      {hasAdjustment && <div className={`official-adjustment ${hasPuntReturn ? "punt-return" : ""}`} style={{ left: `${adjustmentLeft}%`, width: `${Math.max(adjustmentWidth, .8)}%` }}><i>{replay.displayFinalPercent! >= adjustmentStart! ? "›" : "‹"}</i></div>}
+      {variant === "replay" && view.actionEndPercent !== null && hasAdjustment && <><div className={`spot-marker play-end ${hasPuntReturn ? "punt-landing" : ""}`} style={{ left: `${view.actionEndPercent}%` }}><i /></div><div className={`spot-label play-end lane-${layout.playEnd.lane}`} style={annotationStyle(layout.playEnd)}>{hasPuntReturn ? "PUNT LANDING" : "PLAY END"}<b>{view.actionEndPosition}</b></div></>}
       {variant === "replay" && !replay.noMovement && replay.mode !== "field-goal" && replay.displayFinalPercent !== null && <><div className={`spot-marker end ${replay.mode === "touchdown" ? "touchdown-end" : ""}`} style={{ left: `${replay.displayFinalPercent}%` }}><i /></div><div className={`spot-label end ${replay.mode === "touchdown" ? "touchdown-end" : ""} lane-${layout.final.lane}`} style={annotationStyle(layout.final)}>{replay.mode === "touchdown" ? "TOUCHDOWN" : "FINAL"}<b>{replay.displayFinalPosition}</b></div></>}
       {variant === "replay" && replay.turnover && replay.displayFinalPercent !== null && <div className={`turnover-indicator lane-${layout.turnover.lane}`} style={annotationStyle(layout.turnover)}><i>!</i><span>TURNOVER</span></div>}
+      {variant === "replay" && hasPenalty && <span className={`event-flag penalty lane-${layout.penaltyFlag.lane}`} style={annotationStyle(layout.penaltyFlag)} title="Penalty on this play" aria-label="Penalty on this play" />}
+      {variant === "replay" && hasChallenge && <span className={`event-flag challenge lane-${layout.challengeFlag.lane}`} style={annotationStyle(layout.challengeFlag)} title="Team challenge on this play" aria-label="Team challenge on this play" />}
       <div className="endzone right"><b>{view.rightTeam.id}</b><span>END ZONE</span></div>
     </div>
   );

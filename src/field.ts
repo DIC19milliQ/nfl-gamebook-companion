@@ -61,7 +61,7 @@ export interface ReplayPhaseSummary {
 }
 
 export type ReplayFieldMode = "movement" | "no-movement" | "touchdown" | "field-goal" | "unknown";
-export type ReplayVisualization = "run" | "pass-complete" | "pass-incomplete" | "pass-intercepted" | "sack" | "touchdown" | "field-goal" | "other";
+export type ReplayVisualization = "run" | "pass-complete" | "pass-incomplete" | "pass-intercepted" | "sack" | "punt" | "touchdown" | "field-goal" | "other";
 export type ReplayResultState = "positive" | "negative" | "no-gain" | "incomplete" | "touchdown" | "field-goal-good" | "field-goal-missed" | "turnover" | "neutral" | "unknown";
 
 function officialAction(play: Play) {
@@ -70,6 +70,7 @@ function officialAction(play: Play) {
 
 function visualizationFor(play: Play, action: PlayAction): ReplayVisualization {
   if (action.type === "field-goal") return "field-goal";
+  if (action.type === "punt") return "punt";
   if (action.type === "pass") {
     if (action.outcome === "incomplete") return "pass-incomplete";
     if (action.outcome === "interception" || play.details.events.some((event) => event.type === "interception")) return "pass-intercepted";
@@ -87,6 +88,7 @@ function visualizationLabel(visualization: ReplayVisualization, action: PlayActi
   if (visualization === "pass-incomplete") return "PASS INCOMPLETE";
   if (visualization === "pass-intercepted") return "PASS INTERCEPTED";
   if (visualization === "sack") return "SACK";
+  if (visualization === "punt") return "PUNT";
   if (visualization === "touchdown") return "TOUCHDOWN";
   if (visualization === "field-goal") return "FIELD GOAL";
   return "PLAY";
