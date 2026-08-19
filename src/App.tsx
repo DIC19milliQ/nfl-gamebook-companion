@@ -34,7 +34,7 @@ function LanguageToggle({ language, onLanguage }: { language: DescriptionLanguag
   return <div className="language-toggle" role="group" aria-label="Play description language"><span>PLAY TEXT</span>{(["en", "ja"] as const).map((item) => <button key={item} className={language === item ? "active" : ""} aria-pressed={language === item} onClick={() => onLanguage(item)}>{item.toUpperCase()}</button>)}</div>;
 }
 
-function scoreAt(game: GameData, cursor: number) {
+function scoreAt(game: GameData, cursor: number): [number, number] {
   const visible = game.scoring.filter((score) => score.playIndex >= 0 && score.playIndex <= cursor);
   const last = visible.at(-1);
   return last ? [last.visitorScore, last.homeScore] : [0, 0];
@@ -172,7 +172,7 @@ function SituationHeader({ game, play, cursor, controls, showDirection = true }:
   );
 }
 
-function Field({ game, play, variant = "situation" }: { game: GameData; play?: Play; variant?: "situation" | "replay" }) {
+function Field({ game, play, variant = "situation", scoreUpdate }: { game: GameData; play?: Play; variant?: "situation" | "replay"; scoreUpdate?: [number, number] }) {
   const view = fieldView(game, play);
   const replay = replayFieldView(game, play);
   const directionTeam = play ? team(game, play.possession) : undefined;
@@ -238,6 +238,7 @@ function Field({ game, play, variant = "situation" }: { game: GameData; play?: P
       {variant === "replay" && replay.turnover && replay.displayFinalPercent !== null && <div className={`turnover-indicator lane-${layout.turnover.lane}`} style={annotationStyle(layout.turnover)}><i>!</i><span>TURNOVER</span></div>}
       {variant === "replay" && hasPenalty && <span className={`event-flag penalty lane-${layout.penaltyFlag.lane}`} style={annotationStyle(layout.penaltyFlag)} title="Penalty on this play" aria-label="Penalty on this play" />}
       {variant === "replay" && hasChallenge && <span className={`event-flag challenge lane-${layout.challengeFlag.lane}`} style={annotationStyle(layout.challengeFlag)} title="Team challenge on this play" aria-label="Team challenge on this play" />}
+      {variant === "replay" && scoreUpdate && <div className="score-update" role="status" aria-label={`Score update: ${game.teams[0].id} ${scoreUpdate[0]}, ${game.teams[1].id} ${scoreUpdate[1]}`}><span>SCORE UPDATE</span><b>{game.teams[0].id} <strong>{scoreUpdate[0]}</strong><i>—</i><strong>{scoreUpdate[1]}</strong> {game.teams[1].id}</b></div>}
       <div className="endzone right"><b>{view.rightTeam.id}</b><span>END ZONE</span></div>
     </div>
   );
@@ -356,13 +357,24 @@ function DriveSummary({ drive, game, play, next }: { drive: Drive; game: GameDat
 function ReplayView({ game, cursor, language, summary, onNext, onBack, onPlayer }: { game: GameData; cursor: number; language: DescriptionLanguage; summary: ReplaySummaryKind | null; onNext: () => void; onBack: () => void; onPlayer: (id: string) => void }) {
   const revealed = game.plays[cursor];
   const next = game.plays[cursor + 1];
+  const [scoreUpdateCursor, setScoreUpdateCursor] = useState<number | null>(null);
   const completedDrive = revealed?.driveId ? game.drives.find((drive) => drive.id === revealed.driveId && drive.lastPlayIndex === cursor) : undefined;
+  const scoreUpdate: [number, number] | undefined = scoreUpdateCursor === cursor ? scoreAt(game, cursor) : undefined;
+  useEffect(() => {
+    const before = scoreAt(game, cursor - 1);
+    const after = scoreAt(game, cursor);
+    const changed = !summary && cursor >= 0 && (before[0] !== after[0] || before[1] !== after[1]);
+    setScoreUpdateCursor(changed ? cursor : null);
+    if (!changed) return;
+    const timeout = window.setTimeout(() => setScoreUpdateCursor((activeCursor) => activeCursor === cursor ? null : activeCursor), 1500);
+    return () => window.clearTimeout(timeout);
+  }, [cursor, game, summary]);
   return (
     <div className="replay-shell" data-play-anchor>
       <SituationHeader game={game} play={revealed} cursor={cursor} showDirection={false} controls={<div className="replay-progress"><span>{summary === "regulation" ? "END OF REGULATION" : summary ? `${summary.toUpperCase()} SUMMARY` : `PLAY ${Math.max(0, cursor + 1)} / ${game.plays.length}`}</span><i><b style={{ width: `${((cursor + 1) / game.plays.length) * 100}%` }} /></i><em>{summary ? "SCOREBOARD" : "NEXT RESULT LOCKED"}</em></div>} />
       <div className="replay-stage">
         {summary ? <ReplayScoreSummary game={game} kind={summary} /> : <>{revealed ? <div className="replay-result">
-          <Field game={game} play={revealed} variant="replay" />
+          <Field game={game} play={revealed} variant="replay" scoreUpdate={scoreUpdate} />
           <PlayResult game={game} play={revealed} />
           {completedDrive && <DriveSummary drive={completedDrive} game={game} play={revealed} next={next} />}
           <div className="supporting-play"><div className="supporting-head"><span>SUPPORTING TEXT · EVENT ORDER</span><div className="result-flags"><PlayTag kind={revealed.kind} />{revealed.noPlay && <span className="no-play">NO PLAY</span>}{revealed.details.events.some((event) => event.type === "touchdown") && <b>TD</b>}{revealed.details.events.some((event) => event.type === "fumble" || event.type === "interception") && <b className="danger">TURNOVER EVENT</b>}{revealed.details.penalties.length > 0 && <b className="penalty-flag">PENALTY</b>}</div></div><PlayText play={revealed} language={language} />{!!revealed.playerIds.length && <div className="player-links">{revealed.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}</div>

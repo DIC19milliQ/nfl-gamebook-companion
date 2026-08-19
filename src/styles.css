@@ -393,6 +393,12 @@ button { cursor: pointer; }
 .event-flag::before { content: ""; position: absolute; left: -10px; top: -12px; width: 20px; height: 14px; border-radius: 3px 6px 5px 3px; background: #f5ce38; box-shadow: 0 0 0 2px #07120d, 0 2px 5px #0008; transform: skewY(-13deg); }
 .event-flag::after { content: ""; position: absolute; left: -11px; top: -13px; width: 2px; height: 25px; background: #f7f0cb; box-shadow: 0 0 0 1px #07120d; transform: rotate(-7deg); }
 .event-flag.challenge::before { background: #d94742; }
+.score-update { position: absolute; z-index: 16; top: 50%; left: 50%; min-width: min(78%, 440px); display: grid; justify-items: center; gap: 5px; padding: 13px 20px; border: 1px solid #d9ff66; background: rgba(5, 18, 12, .91); box-shadow: 0 0 0 3px rgba(5, 18, 12, .58), 0 10px 30px rgba(0, 0, 0, .46); color: white; text-align: center; pointer-events: none; opacity: 0; transform: translate(-50%, -50%) scale(.92); animation: score-update 1.5s ease-in-out forwards; }
+.score-update span { color: #d9ff66; font-size: 9px; font-weight: 950; letter-spacing: .2em; }
+.score-update b { display: flex; align-items: baseline; justify-content: center; gap: 8px; font: 23px/1 Impact, sans-serif; letter-spacing: .05em; white-space: nowrap; }
+.score-update strong { color: #d9ff66; font-size: 38px; }
+.score-update i { color: #bfd0c5; font-style: normal; }
+@keyframes score-update { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.92); } 13% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.03); } }
 .spot-label.same-spot { border-color: white; }
 .spot-label.touchdown-end { border-color: var(--green); color: var(--green); }
 .play-result-panel { --result-accent: #bac9c1; display: grid; grid-template-columns: minmax(0, 1fr) auto; border: 1px solid #3d5448; border-left: 5px solid var(--result-accent); background: #08130f; }
@@ -703,6 +709,10 @@ button { cursor: pointer; }
   .replay-result-head { align-items: flex-start; flex-direction: column; }
   .result-flags { justify-content: flex-start; }
   .field-replay { height: 205px; margin: 0 0 8px; }
+  .score-update { min-width: min(88%, 360px); padding: 10px 12px; gap: 3px; }
+  .score-update span { font-size: 7px; }
+  .score-update b { gap: 5px; font-size: 17px; }
+  .score-update strong { font-size: 30px; }
   .broadcast-situation { min-width: 91px; height: 24px; }
   .broadcast-situation span { min-width: 31px; padding: 0 4px; font-size: 11px; }
   .broadcast-situation b { padding: 0 5px; font-size: 6px; }
