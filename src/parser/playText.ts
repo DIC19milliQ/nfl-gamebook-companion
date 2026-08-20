@@ -3,6 +3,7 @@ import type {
   PlayParticipantRole, PlayPenalty, PlayPhase, PlayReviewDetails, PlayRuling,
   PlayScoringDetails, PlaySequenceEvent, PlaySequenceType, PlaySpot, Team, TeamId,
 } from "../types";
+import { normalizeGamebookTeamCode } from "../teamCodes";
 
 const PLAYER_SOURCE = "(?:[A-Z][a-z]?\\.){1,2}[A-Z][A-Za-z'-]*";
 const PLAYER_RE = new RegExp(`\\b${PLAYER_SOURCE}`, "g");
@@ -22,8 +23,11 @@ const unique = <T,>(values: T[]) => [...new Set(values)];
 const playerNames = (text: string) => unique(text.match(PLAYER_RE) ?? []);
 const cleanText = (text: string) => text.replace(/^[\s,.;:*-]+|[\s,.;:*-]+$/g, "").trim();
 function teamId(code: string | undefined, teams: [Team, Team]) {
-  const aliases: Record<string, string[]> = { LAR: ["LA"], JAX: ["JAC"], WSH: ["WAS"] };
-  return teams.find((team) => team.id === code || aliases[team.id]?.includes(code ?? ""))?.id;
+  if (!code) return undefined;
+  const direct = teams.find((team) => team.id === code);
+  if (direct) return direct.id;
+  const normalized = normalizeGamebookTeamCode(code);
+  return teams.find((team) => team.id === normalized)?.id;
 }
 function teamFromName(value: string, teams: [Team, Team]) {
   const needle = value.trim().toLowerCase();

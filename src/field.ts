@@ -1,4 +1,5 @@
 import type { Drive, GameData, Play, PlayAction, PlayPhase, TeamId } from "./types";
+import { isSameTeamCode } from "./teamCodes";
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -7,8 +8,7 @@ export function absoluteYardLine(yardLine: string, game: Pick<GameData, "teams">
   const match = yardLine.match(/^([A-Z]{2,3})\s+(\d+)$/);
   if (!match) return null;
   const yard = Number(match[2]);
-  const aliases: Record<string, string[]> = { LAR: ["LA"], JAX: ["JAC"], WSH: ["WAS"] };
-  const matches = (teamId: TeamId) => match[1] === teamId || aliases[teamId]?.includes(match[1]);
+  const matches = (teamId: TeamId) => isSameTeamCode(match[1], teamId);
   if (matches(game.teams[0].id)) return clamp(yard, 0, 50);
   if (matches(game.teams[1].id)) return 100 - clamp(yard, 0, 50);
   return null;
