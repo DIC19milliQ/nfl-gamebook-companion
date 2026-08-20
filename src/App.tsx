@@ -4,6 +4,7 @@ import { parseGamebook } from "./parser";
 import { renderPlayDescription, renderPlaySections, type DescriptionLanguage } from "./playDescription";
 import { driveResultView, fieldView, replayFieldView } from "./field";
 import { planReplayFieldLayout, type ReplayLabelLane } from "./replayLayout";
+import { fetchRemoteGamebook, type RemoteLoadStage } from "./remoteGamebook";
 import type { Drive, GameData, Play, PlayParticipant, Player, TeamId } from "./types";
 
 type Mode = "watch" | "replay" | "explore";
@@ -100,7 +101,7 @@ function Landing({ onFile, error }: { onFile: (file: File) => void; error: strin
           <p className="eyebrow">ONE PDF. THE WHOLE GAME.</p>
           <h1>Turn the gamebook<br />into game day.</h1>
           <p className="hero-lede">A spoiler-safe second screen, a play-by-play replay, and a deep postgame explorer — built entirely from the NFL Gamebook PDF.</p>
-          <div className="privacy-pill"><span>●</span> Parsed on this device · no upload · no data API</div>
+          <div className="privacy-pill"><span>●</span> Parsed on this device · no PDF upload · no permanent storage</div>
         </div>
         <div
           className={`dropzone ${dragging ? "dragging" : ""}`}
@@ -527,8 +528,10 @@ export default function App() {
   const [loadingLabel, setLoadingLabel] = useState("");
   const [error, setError] = useState("");
   const [playerId, setPlayerId] = useState("");
+  const autoLoadStarted = useRef(false);
+  const [autoGameId] = useState(() => new URLSearchParams(window.location.search).get("game")?.trim() ?? "");
 
-  const loadBytes = useCallback(async (bytes: ArrayBuffer, fileName: string) => {
+  const loadBytes = useCallback(async (bytes: ArrayBuffer, fileName: string, automatic = false) => {
     setLoading(true); setError(""); setProgress(2); setLoadingLabel("Opening the PDF…");
     try {
       const parsed = await parseGamebook(bytes, fileName, (current, total) => {
@@ -540,7 +543,8 @@ export default function App() {
       document.title = `${parsed.teams[0].id} @ ${parsed.teams[1].id} · Gamebook Companion`;
     } catch (cause) {
       console.error(cause);
-      setError(cause instanceof Error ? cause.message : "This PDF could not be parsed.");
+      const message = cause instanceof Error ? cause.message : "This PDF could not be parsed.";
+      setError(automatic ? `Automatic loading failed: ${message} Choose an NFL Gamebook PDF below instead.` : message);
     } finally { setLoading(false); }
   }, []);
 
@@ -550,7 +554,32 @@ export default function App() {
     await loadBytes(await file.arrayBuffer(), file.name);
   }, [loadBytes]);
 
-  const reset = () => { setGame(null); setPlayerId(""); setCursor(-1); setReplaySummary(null); document.title = "Gamebook Companion"; };
+  useEffect(() => {
+    if (!autoGameId || autoLoadStarted.current) return;
+    autoLoadStarted.current = true;
+    setLoading(true); setError(""); setProgress(2); setLoadingLabel("Getting Gamebook information…");
+    const onStage = (stage: RemoteLoadStage) => {
+      if (stage === "metadata") { setProgress(2); setLoadingLabel("Getting Gamebook information…"); }
+      else { setProgress(6); setLoadingLabel("Downloading the NFL PDF…"); }
+    };
+    void fetchRemoteGamebook(autoGameId, { onStage })
+      .then(({ bytes, fileName }) => loadBytes(bytes, fileName, true))
+      .catch((cause) => {
+        console.error(cause);
+        const message = cause instanceof Error ? cause.message : "The Gamebook could not be loaded automatically.";
+        setError(`Automatic loading failed: ${message} Choose an NFL Gamebook PDF below instead.`);
+        setLoading(false);
+      });
+  }, [autoGameId, loadBytes]);
+
+  const reset = () => {
+    setGame(null); setPlayerId(""); setCursor(-1); setReplaySummary(null); document.title = "Gamebook Companion";
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("game")) {
+      url.searchParams.delete("game");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  };
   const safeCursor = useMemo(() => game ? clamp(cursor, -1, game.plays.length - 1) : -1, [cursor, game]);
   const replayNext = useCallback(() => {
     if (!game) return;
@@ -604,5 +633,5 @@ export default function App() {
   }, [game, mode, safeCursor]);
   if (loading) return <LoadingScreen progress={progress} label={loadingLabel} />;
   if (!game) return <Landing onFile={loadFile} error={error} />;
-  return <div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No external data or AI APIs</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div>;
+  return <div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No PDF upload or permanent storage</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div>;
 }
