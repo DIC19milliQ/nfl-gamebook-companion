@@ -46,6 +46,7 @@ export type PlayActionType =
   | "pass"
   | "rush"
   | "advance"
+  | "return"
   | "scramble"
   | "sack"
   | "kneel"
@@ -71,6 +72,7 @@ export type PlayParticipantRole =
   | "interceptor"
   | "forced-fumble"
   | "recovery"
+  | "blocker"
   | "kicker"
   | "punter"
   | "returner"
@@ -93,7 +95,7 @@ export interface PlayPenalty {
   playerName?: string;
   type: string;
   yards?: number;
-  enforcement?: "enforced" | "placed";
+  enforcement?: "enforced" | "placed" | "between-downs";
   enforcedAt?: string;
   status: "accepted" | "declined" | "offsetting" | "unknown";
   noPlay: boolean;
@@ -116,8 +118,10 @@ export interface PlayAction {
   target?: string;
   direction?: string;
   depth?: "short" | "deep";
-  outcome?: "complete" | "incomplete" | "gain" | "loss" | "no-gain" | "touchdown" | "interception" | "fumble" | "good" | "no-good" | "fair-catch" | "out-of-bounds" | "no-play";
+  outcome?: "complete" | "incomplete" | "gain" | "loss" | "no-gain" | "touchdown" | "interception" | "fumble" | "good" | "no-good" | "blocked" | "fair-catch" | "out-of-bounds" | "no-play";
   boundary?: "out-of-bounds";
+  teamId?: TeamId;
+  startPosition?: string;
   endPosition?: string;
   yards?: number;
   rawText: string;
@@ -145,7 +149,7 @@ export interface PlayInjuryUpdate {
 }
 
 export interface PlaySpot {
-  kind: "start" | "action-end" | "fumble" | "recovery" | "enforcement" | "official-final";
+  kind: "start" | "action-end" | "interception" | "fumble" | "recovery" | "enforcement" | "official-final";
   position: string;
   phase: PlayPhase;
   order: number;
@@ -157,6 +161,8 @@ export type PlaySequenceType =
   | "defense"
   | "fumble"
   | "recovery"
+  | "block"
+  | "possession-change"
   | "penalty"
   | "touchdown"
   | "review"
@@ -184,12 +190,13 @@ export interface PlaySequenceEvent {
   review?: PlayReviewDetails;
   injury?: PlayInjuryUpdate;
   participantNames?: string[];
+  teamId?: TeamId;
   location?: string;
   result?: string;
 }
 
 export interface PlayEvent {
-  type: "fumble" | "recovery" | "interception" | "touchdown" | "first-down" | "replay" | "injury";
+  type: "fumble" | "recovery" | "interception" | "block" | "possession-change" | "touchdown" | "first-down" | "replay" | "injury";
   actor?: string;
   teamId?: TeamId;
   location?: string;

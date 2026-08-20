@@ -39,12 +39,13 @@ function renderAction(action: PlayAction, play: Play) {
       return sentence([`${formation}${action.actor}から${action.target ?? "レシーバー"}へ${route ? `${route}パス` : "パス"}成功`, destination(action), yards, action.boundary === "out-of-bounds" ? "アウト・オブ・バウンズ" : undefined, action.outcome === "touchdown" ? "タッチダウン" : undefined, /TOUCHDOWN NULLIFIED/i.test(action.rawText) ? "当初タッチダウン判定（反則により無効）" : undefined]);
     }
     case "rush": return sentence([`${formation}${action.actor}が${direction(action) || "中央"}をラン`, destination(action), yards, action.boundary === "out-of-bounds" ? "アウト・オブ・バウンズ" : undefined, action.outcome === "touchdown" ? "タッチダウン" : undefined]);
-    case "advance": return sentence([`${formation}${action.actor}がボールを進める`, destination(action), yards]);
+    case "advance": return sentence([`${formation}${action.actor}がボールを進める`, destination(action), yards, action.outcome === "touchdown" ? "タッチダウン" : undefined]);
+    case "return": return sentence([`${action.actor}が${action.startPosition ? `${action.startPosition}から` : ""}リターン`, destination(action), yards, action.boundary === "out-of-bounds" ? "アウト・オブ・バウンズ" : undefined, action.outcome === "touchdown" ? "タッチダウン" : undefined]);
     case "scramble": return sentence([`${formation}${action.actor}が${direction(action) ? `${direction(action)}へ` : ""}スクランブル`, destination(action), yards, action.boundary === "out-of-bounds" ? "アウト・オブ・バウンズ" : undefined, action.outcome === "touchdown" ? "タッチダウン" : undefined]);
     case "sack": { const sackers = namesByRole(play.details.participants, ["sacker"]); return sentence([`${formation}${action.actor}が${sackers.length ? `${sackers.join(" / ")}に` : ""}サックされる`, action.endPosition ? `${action.endPosition}で` : undefined, action.boundary === "out-of-bounds" ? "アウト・オブ・バウンズ" : undefined, yards]); }
     case "kneel": return sentence([`${formation}${action.actor}がニーダウン`, destination(action), yards]);
     case "spike": return `${formation}${action.actor}がスパイクして時計を止める。`;
-    case "field-goal": return `${action.actor}の${action.yards}ヤード・フィールドゴールは${action.outcome === "good" ? "成功" : "失敗"}。`;
+    case "field-goal": return `${action.actor}の${action.yards}ヤード・フィールドゴールは${action.outcome === "good" ? "成功" : action.outcome === "blocked" ? "ブロックされる" : "失敗"}。`;
     case "extra-point": return `${action.actor}のエクストラポイントは${action.outcome === "good" ? "成功" : "失敗"}。`;
     case "punt": return sentence([`${action.actor}が${action.yards}ヤードのパント`, action.endPosition ? `${action.endPosition}へ` : undefined, action.outcome === "fair-catch" ? "フェアキャッチ" : undefined]);
     case "kickoff": return sentence([`${action.actor}が${action.yards}ヤードのキックオフ`, action.endPosition ? `${action.endPosition}へ` : undefined]);
@@ -59,7 +60,7 @@ function unique<T>(items: T[]) { return [...new Set(items)]; }
 function penaltyText(penalty: PlayPenalty) {
   const translated = penaltyJa[penalty.type], name = [penalty.teamId, penalty.playerName].filter(Boolean).join("-") || "チーム／選手不明";
   const status = penalty.status === "accepted" ? "受理" : penalty.status === "declined" ? "辞退" : penalty.status === "offsetting" ? "相殺" : "判定状態不明";
-  return sentence([`${name}に${translated ? `${translated}（${penalty.type}）` : penalty.type}`, penalty.yards !== undefined ? `${penalty.yards}ヤード` : undefined, penalty.enforcedAt ? `${penalty.enforcedAt}で${penalty.enforcement === "placed" ? "ボールを配置" : "適用"}` : undefined, status, penalty.automaticFirstDown ? "オートマチック・ファーストダウン" : undefined, penalty.noPlay ? "ノープレー" : undefined]);
+  return sentence([`${name}に${translated ? `${translated}（${penalty.type}）` : penalty.type}`, penalty.yards !== undefined ? `${penalty.yards}ヤード` : undefined, penalty.enforcedAt ? `${penalty.enforcedAt}で${penalty.enforcement === "placed" ? "ボールを配置" : "適用"}` : penalty.enforcement === "between-downs" ? "ダウン間で適用" : undefined, status, penalty.automaticFirstDown ? "オートマチック・ファーストダウン" : undefined, penalty.noPlay ? "ノープレー" : undefined]);
 }
 function injuryStatus(status: string) { if (/return is Questionable/i.test(status)) return "Return Questionable"; if (/is Out of the game/i.test(status)) return "Out"; if (/has returned to the game/i.test(status)) return "Returned"; return status; }
 function driveText(raw: string) {
@@ -75,6 +76,8 @@ function sectionForEvent(play: Play, event: PlaySequenceEvent): RenderedPlaySect
   }
   if (event.type === "fumble") return { kind: "turnover", label: `${phase} · BALL EVENT`, text: "ファンブル。", phase };
   if (event.type === "recovery") return { kind: "turnover", label: `${phase} · BALL EVENT`, text: `${event.participantNames?.[0] ?? "選手"}が${event.location ? `${event.location}で` : ""}リカバー。`, phase };
+  if (event.type === "block") return { kind: "turnover", label: `${phase} · BLOCK`, text: `${event.participantNames?.[0] ?? "守備選手"}が${event.result === "field-goal" ? "フィールドゴール" : "キック"}をブロック。`, phase };
+  if (event.type === "possession-change") return { kind: "turnover", label: `${phase} · POSSESSION`, text: `ボール保持が${event.teamId ?? "相手チーム"}へ移る${event.location ? `（${event.location}）` : ""}。`, phase };
   if (event.type === "penalty" && event.penaltyIndex !== undefined) {
     if (event.result === "restated-after-review") return { kind: "note", label: `${phase} · OFFICIAL RESTATEMENT`, text: "最終公式記録で同じ反則が再掲されたため、重複計上していません。", phase };
     return { kind: "penalty", label: `${phase} · PENALTY${suffix}`, text: penaltyText(play.details.penalties[event.penaltyIndex]), phase, ruling: event.ruling };
@@ -86,7 +89,7 @@ function sectionForEvent(play: Play, event: PlaySequenceEvent): RenderedPlaySect
   if (event.type === "drive-summary") return { kind: "scoring", label: "SCORE / DRIVE", text: driveText(event.rawText), phase };
   if (event.type === "kick-crew") return { kind: "scoring", label: `${phase} · KICK CREW`, text: `スナッパー：${event.participantNames?.[0] ?? "—"}。ホルダー：${event.participantNames?.[1] ?? "—"}。`, phase };
   if (event.type === "official-marker") return undefined;
-  if (event.type === "administrative") return { kind: "note", label: "ADMINISTRATIVE", text: event.result === "10-second runoff" ? "10秒ランオフ。" : event.rawText };
+  if (event.type === "administrative") return { kind: "note", label: "ADMINISTRATIVE", text: event.result === "10-second runoff" ? "10秒ランオフ。" : event.result === "blocked-kick-incomplete-pass" ? `${event.participantNames?.[0] ?? "回収選手"}がブロックキック回収後に投げたパスは不成功。` : event.rawText };
   if (event.type === "raw") return { kind: "note", label: "RAW / UNPARSED", text: event.rawText, raw: true, phase };
   return undefined;
 }

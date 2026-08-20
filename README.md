@@ -68,10 +68,10 @@ Gamebook PDF
 - **baseline許容付き行復元**: PDF.jsがフォントごとに保持する約0.75ptのbaseline差を、実際の行間より十分小さい1pt許容で同じ表行へ復元します。
 - **見出しベースのセクション検出**: ページ番号ではなく `Final Team Statistics`、`Ball Possession And Drive Chart`、`Play By Play` などの見出しで対象を探します。
 - **PBP状態機械**: Quarter、Drive開始、Down/Distance行、折返し行、Penalty/Review追記を順に結合します。
-- **1 Play = 順序付き状態変化**: `stateBefore / stateAfter` に加え、原文offset順の `sequence[]`、複数の `actions[]`、phase、provisional/final ruling、確実なspot列を保持します。互換用 `action` は最終公式actionを指します。
+- **1 Play = 順序付き状態変化**: `stateBefore / stateAfter` に加え、原文offset順の `sequence[]`、複数の `actions[]`、phase、provisional/final ruling、確実なspot列を保持します。Interception・kick block・recovery・possession change・returnも同じ時系列へ載せ、各Actionはその時点の保持Teamと開始/終了spotを持ちます。互換用 `action` は最終公式actionを指します。
 - **phaseとReview正規化**: scrimmage / try / kickoff / administrativeを分け、Replay前後の同一反則再掲はreview境界をまたぐsemantic一致の場合だけ1件へ統合します。原文上の再掲位置はsequenceに残します。
 - **情報を失わないJA**: event sequence順にMain Play、Penalty、Review、Timeout、Injury、XP / Drive summaryを表示し、構造化できないoffset区間だけを `RAW / UNPARSED` として原文保持します。
-- **体験を分離したField**: WATCH ALONGはPossessionと攻撃方向を強調する小型Situation Indicator、GAMEBOOK REPLAYは確定済みPlayのStart → Official Finalに加え、Runの実線、Passの模式的な投球線、Incompleteの失敗地点cueを描き分けます。GamebookにないXY routeやCatch spotは推定しません。
+- **体験を分離したField**: WATCH ALONGはPossessionと攻撃方向を強調する小型Situation Indicator、GAMEBOOK REPLAYは確定済みPlayのStart → Official Finalに加え、Runの実線、Passの模式的な投球線、Incompleteの失敗地点cueを描き分けます。INT returnは投球→INT地点→逆向きreturn、blocked FGはattempt/block→確実なrecovery spot→returnとして分離します。GamebookにないXY route、Catch spot、Block spotは推定しません。
 - **共通キーボード操作**: WATCH ALONG / GAMEBOOK REPLAYでは `←` / `→` / `Space` でPlay移動できます。入力・ボタンへフォーカス中は発火しません。
 - **Roster統合**: Starterだけでなく、左右のSubstitutions / Did Not Playを行折返し後に復元し、Stats / Defense / Snap / PBP由来PlayerへPositionを統合します。
 - **missingと0を分離**: PDFにPlaytime Percentageがなければsection availabilityを`false`として保持し、UIは0%を推定せず`N/A`を表示します。
@@ -130,7 +130,7 @@ fixtureから直接、次を検証しています。
 - Cowboys 17–7 Seahawks、Total Net Yards 338 / 156、両側QB Stats、Drive/PBP
 - Titans 19–13 49ers、Total Net Yards 279 / 322、A.Martinez 51 / 66%、K.Rourke 26 / 34%
 - 片側Snapを意図的に欠落させた場合に `partial` / `snaps-one-sided` となること
-- Pass complete / incomplete、rush、no gain、scramble、sack、kneel、spike、TD、FG / XP、punt / kickoff、timeout
+- Pass complete / incomplete、interception / return / return TD、rush、no gain、scramble、sack、kneel、spike、TD、FG / XP、blocked FG / recovery / return、punt / kickoff / return、timeout
 - accepted / declined / offsetting / No Play Penalty、enforcement位置、括弧Tackler、角括弧QB hit、fumble/recovery、Scoring Drive summary
 - 固定Team fieldのGoal Line、攻撃方向、First-down marker座標
 - 未知構文の英語fallbackと、Penalty / bracketの未抽出validation

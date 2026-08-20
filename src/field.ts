@@ -7,8 +7,10 @@ export function absoluteYardLine(yardLine: string, game: Pick<GameData, "teams">
   const match = yardLine.match(/^([A-Z]{2,3})\s+(\d+)$/);
   if (!match) return null;
   const yard = Number(match[2]);
-  if (match[1] === game.teams[0].id) return clamp(yard, 0, 50);
-  if (match[1] === game.teams[1].id) return 100 - clamp(yard, 0, 50);
+  const aliases: Record<string, string[]> = { LAR: ["LA"], JAX: ["JAC"], WSH: ["WAS"] };
+  const matches = (teamId: TeamId) => match[1] === teamId || aliases[teamId]?.includes(match[1]);
+  if (matches(game.teams[0].id)) return clamp(yard, 0, 50);
+  if (matches(game.teams[1].id)) return 100 - clamp(yard, 0, 50);
   return null;
 }
 
@@ -34,7 +36,9 @@ export function fieldView(game: Pick<GameData, "teams">, play?: Play) {
   const finalPosition = play?.details.officialEndPosition;
   const absoluteFinal = finalPosition ? absoluteYardLine(finalPosition, game) : null;
   const puntLanding = play?.details.actions?.find((action) => action.type === "punt")?.endPosition;
-  const actionEnd = puntLanding ?? play?.details.spots?.filter((spot) => spot.kind === "action-end" && spot.certain).at(-1)?.position;
+  const controlSpot = play?.details.spots?.find((spot) => spot.kind === "interception" && spot.certain)?.position
+    ?? play?.details.spots?.find((spot) => spot.kind === "recovery" && spot.certain)?.position;
+  const actionEnd = puntLanding ?? controlSpot ?? play?.details.spots?.filter((spot) => spot.kind === "action-end" && spot.certain).at(-1)?.position;
   const absoluteActionEnd = actionEnd ? absoluteYardLine(actionEnd, game) : null;
   const movementYards = absoluteBall !== null && absoluteFinal !== null && direction !== "unknown" ? Math.round((absoluteFinal - absoluteBall) * (direction === "right" ? 1 : -1)) : null;
   return {
@@ -61,8 +65,8 @@ export interface ReplayPhaseSummary {
   position?: string;
 }
 
-export type ReplayFieldMode = "movement" | "no-movement" | "touchdown" | "field-goal" | "unknown";
-export type ReplayVisualization = "run" | "pass-complete" | "pass-incomplete" | "pass-intercepted" | "sack" | "punt" | "touchdown" | "field-goal" | "other";
+export type ReplayFieldMode = "movement" | "no-movement" | "touchdown" | "field-goal" | "blocked-kick" | "unknown";
+export type ReplayVisualization = "run" | "pass-complete" | "pass-incomplete" | "pass-intercepted" | "sack" | "punt" | "touchdown" | "field-goal" | "blocked-field-goal" | "other";
 export type ReplayResultState = "positive" | "negative" | "no-gain" | "incomplete" | "touchdown" | "field-goal-good" | "field-goal-missed" | "turnover" | "neutral" | "unknown";
 
 function officialAction(play: Play) {
@@ -70,6 +74,8 @@ function officialAction(play: Play) {
 }
 
 function visualizationFor(play: Play, action: PlayAction): ReplayVisualization {
+  if (play.details.actions.some((candidate) => candidate.type === "field-goal" && candidate.outcome === "blocked")) return "blocked-field-goal";
+  if (play.details.events.some((event) => event.type === "interception")) return "pass-intercepted";
   if (action.type === "field-goal") return "field-goal";
   if (action.type === "punt") return "punt";
   if (action.type === "pass") {
@@ -77,7 +83,7 @@ function visualizationFor(play: Play, action: PlayAction): ReplayVisualization {
     if (action.outcome === "interception" || play.details.events.some((event) => event.type === "interception")) return "pass-intercepted";
     return "pass-complete";
   }
-  if (["rush", "scramble", "kneel", "advance"].includes(action.type)) return "run";
+  if (["rush", "scramble", "kneel", "advance", "return"].includes(action.type)) return "run";
   if (action.type === "sack") return "sack";
   if (play.details.events.some((event) => event.type === "touchdown") || action.outcome === "touchdown" || play.kind === "touchdown") return "touchdown";
   return "other";
@@ -92,6 +98,7 @@ function visualizationLabel(visualization: ReplayVisualization, action: PlayActi
   if (visualization === "punt") return "PUNT";
   if (visualization === "touchdown") return "TOUCHDOWN";
   if (visualization === "field-goal") return "FIELD GOAL";
+  if (visualization === "blocked-field-goal") return "BLOCKED FIELD GOAL";
   return "PLAY";
 }
 
@@ -106,6 +113,20 @@ function turnoverLabel(play: Play) {
   return undefined;
 }
 
+function possessionChange(play: Play) {
+  const event = [...play.details.sequence].reverse().find((candidate) => candidate.type === "possession-change" && candidate.teamId);
+  if (!event?.teamId) return undefined;
+  return { teamId: event.teamId, position: event.location, reason: event.result };
+}
+
+function returnAction(play: Play) {
+  return [...play.details.actions].reverse().find((action) => action.type === "return");
+}
+
+function blockedFieldGoal(play: Play) {
+  return play.details.actions.find((action) => action.type === "field-goal" && action.outcome === "blocked");
+}
+
 function yardResultLabel(yards: number | null) {
   if (yards === null) return "RESULT NOT ESTIMATED";
   if (yards === 0) return "NO GAIN · 0 YARDS";
@@ -113,6 +134,19 @@ function yardResultLabel(yards: number | null) {
 }
 
 function resultPresentation(play: Play, action: PlayAction, movementYards: number | null, fieldGoalOutcome?: "good" | "missed") {
+  const returned = returnAction(play), blocked = blockedFieldGoal(play), change = possessionChange(play);
+  const recovery = [...play.details.events].reverse().find((event) => event.type === "recovery");
+  if (blocked) {
+    if (returned?.outcome === "touchdown") return { resultLabel: "BLOCKED FG RETURN · TOUCHDOWN", resultDetail: returned.yards === undefined ? returned.actor : `${returned.yards} YARDS · ${returned.actor}`, resultState: "touchdown" as const };
+    if (returned?.yards !== undefined) return { resultLabel: `BLOCKED FG RETURN · ${returned.yards} YARDS`, resultDetail: returned.actor, resultState: "turnover" as const };
+    if (recovery?.teamId) return { resultLabel: `BLOCKED FG · RECOVERED BY ${recovery.teamId}`, resultDetail: recovery.location, resultState: recovery.teamId === play.possession ? "neutral" as const : "turnover" as const };
+    return { resultLabel: "BLOCKED FIELD GOAL", resultDetail: blocked.yards === undefined ? undefined : `${blocked.yards} YARD ATTEMPT`, resultState: "field-goal-missed" as const };
+  }
+  if (play.details.events.some((event) => event.type === "interception")) {
+    if (returned?.outcome === "touchdown") return { resultLabel: "INTERCEPTION RETURN · TOUCHDOWN", resultDetail: returned.yards === undefined ? returned.actor : `${returned.yards} YARDS · ${returned.actor}`, resultState: "touchdown" as const };
+    if (returned?.yards !== undefined && returned.yards !== 0) return { resultLabel: `INTERCEPTION RETURN · ${returned.yards} YARDS`, resultDetail: returned.actor, resultState: "turnover" as const };
+    return { resultLabel: "INTERCEPTION", resultDetail: change?.position, resultState: "turnover" as const };
+  }
   const turnover = turnoverLabel(play);
   if (turnover) return { resultLabel: turnover, resultDetail: movementYards === null ? undefined : yardResultLabel(movementYards), resultState: "turnover" as const };
   if (play.details.events.some((event) => event.type === "touchdown") || action.outcome === "touchdown" || play.kind === "touchdown") return { resultLabel: "TOUCHDOWN", resultDetail: action.actor, resultState: "touchdown" as const };
@@ -159,22 +193,39 @@ function touchdownPhases(play: Play): ReplayPhaseSummary[] {
 
 export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
   const base = fieldView(game, play);
-  if (!play) return { ...base, mode: "unknown" as ReplayFieldMode, visualization: "other" as ReplayVisualization, visualizationLabel: "PLAY", playDirection: undefined, schematicLane: 50, schematicTargetPercent: null, displayFinalPosition: undefined, displayFinalPercent: null, displayMovementYards: null, finalSource: "unknown" as const, noMovement: false, resultLabel: undefined, resultDetail: undefined, resultState: "unknown" as ReplayResultState, turnover: false, phases: [] as ReplayPhaseSummary[], downDistance: undefined, fieldGoal: undefined };
+  if (!play) return { ...base, mode: "unknown" as ReplayFieldMode, visualization: "other" as ReplayVisualization, visualizationLabel: "PLAY", playDirection: undefined, schematicLane: 50, schematicTargetPercent: null, displayFinalPosition: undefined, displayFinalPercent: null, displayMovementYards: null, finalSource: "unknown" as const, noMovement: false, resultLabel: undefined, resultDetail: undefined, resultState: "unknown" as ReplayResultState, turnover: false, phases: [] as ReplayPhaseSummary[], downDistance: undefined, fieldGoal: undefined, possessionChange: undefined, returnPath: undefined, blockedKick: undefined };
 
   const puntAction = play.details.actions.find((candidate) => candidate.type === "punt");
   const action = puntAction ?? officialAction(play);
   const touchdownAction = play.details.actions.find((candidate) => candidate.outcome === "touchdown");
   const fieldGoalAction = play.details.actions.find((candidate) => candidate.type === "field-goal") ?? (action.type === "field-goal" ? action : undefined);
-  const visualizationAction = puntAction ?? touchdownAction ?? action;
+  const returned = returnAction(play);
+  const change = possessionChange(play);
+  const blocked = blockedFieldGoal(play);
+  const visualizationAction = blocked ?? (play.details.events.some((event) => event.type === "interception") ? play.details.actions.find((candidate) => candidate.type === "pass") : undefined) ?? puntAction ?? touchdownAction ?? action;
   const visualization = visualizationFor(play, visualizationAction);
   const playDirection = cueLabel(visualizationAction);
   // Gamebook left/right is retained as text only until it can be transformed
   // with a verified offense-orientation model. The route itself stays neutral.
   const lane = 50;
   const turnover = Boolean(turnoverLabel(play));
+  const changeAbsolute = change?.position ? absoluteYardLine(change.position, game) : null;
+  const changePercent = changeAbsolute === null ? null : fieldPercent(changeAbsolute);
+  const returnTeam = returned?.teamId ?? change?.teamId;
+  const returnDirection = returnTeam ? attackDirection(returnTeam, game) : "unknown";
+  const returnGoalAbsolute = returnDirection === "right" ? 100 : returnDirection === "left" ? 0 : null;
+  const explicitReturnEnd = returned?.endPosition ? absoluteYardLine(returned.endPosition, game) : null;
+  const returnEndPercent = returned?.outcome === "touchdown" && returnGoalAbsolute !== null ? fieldPercent(returnGoalAbsolute) : explicitReturnEnd === null ? null : fieldPercent(explicitReturnEnd);
+  const returnPath = returned && changePercent !== null && returnEndPercent !== null && returnTeam ? { teamId: returnTeam, startPosition: returned.startPosition ?? change?.position, startPercent: changePercent, endPosition: returned.outcome === "touchdown" ? "END ZONE" : returned.endPosition, endPercent: returnEndPercent, yards: returned.yards, touchdown: returned.outcome === "touchdown", direction: returnDirection } : undefined;
+  const changeView = change?.teamId ? { ...change, percent: changePercent, direction: attackDirection(change.teamId, game) } : undefined;
+  const recovery = [...play.details.events].reverse().find((event) => event.type === "recovery");
+  const blockEvent = play.details.events.find((event) => event.type === "block");
+  const blockedKick = blocked ? { type: "field-goal" as const, blocker: blockEvent?.actor, recoveryTeamId: recovery?.teamId, recoveryPlayer: recovery?.actor, recoveryPosition: recovery?.location, recoveryPercent: recovery?.location ? fieldPercent(absoluteYardLine(recovery.location, game) ?? 50) : null } : undefined;
 
   if (touchdownAction || play.kind === "touchdown") {
-    const goalAbsolute = base.direction === "right" ? 100 : 0;
+    const scoringTeam = touchdownAction?.teamId ?? play.details.events.find((event) => event.type === "touchdown")?.teamId ?? play.possession;
+    const scoringDirection = attackDirection(scoringTeam, game);
+    const goalAbsolute = scoringDirection === "right" ? 100 : 0;
     return {
       ...base,
       mode: "touchdown" as const,
@@ -185,18 +236,47 @@ export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
       schematicTargetPercent: null,
       displayFinalPosition: "END ZONE",
       displayFinalPercent: fieldPercent(goalAbsolute),
-      displayMovementYards: touchdownAction?.yards ?? null,
+      displayMovementYards: returned?.yards ?? touchdownAction?.yards ?? null,
       finalSource: "touchdown" as const,
       noMovement: false,
-      ...resultPresentation(play, touchdownAction ?? action, touchdownAction?.yards ?? null),
+      ...resultPresentation(play, touchdownAction ?? action, returned?.yards ?? touchdownAction?.yards ?? null),
       turnover,
       phases: touchdownPhases(play),
       downDistance: downDistance(play),
       fieldGoal: undefined,
+      possessionChange: changeView,
+      returnPath,
+      blockedKick,
     };
   }
 
   if (fieldGoalAction) {
+    if (fieldGoalAction.outcome === "blocked") {
+      const recoveryPosition = recovery?.location;
+      const recoveryAbsolute = recoveryPosition ? absoluteYardLine(recoveryPosition, game) : null;
+      return {
+        ...base,
+        mode: "blocked-kick" as const,
+        visualization,
+        visualizationLabel: visualizationLabel(visualization, visualizationAction),
+        playDirection,
+        schematicLane: lane,
+        schematicTargetPercent: null,
+        displayFinalPosition: returned?.endPosition ?? recoveryPosition,
+        displayFinalPercent: returnEndPercent ?? (recoveryAbsolute === null ? null : fieldPercent(recoveryAbsolute)),
+        displayMovementYards: returned?.yards ?? 0,
+        finalSource: returned?.endPosition ? "explicit" as const : recoveryPosition ? "recovery" as const : "unknown" as const,
+        noMovement: false,
+        ...resultPresentation(play, fieldGoalAction, returned?.yards ?? null),
+        turnover: Boolean(change),
+        phases: [] as ReplayPhaseSummary[],
+        downDistance: downDistance(play),
+        fieldGoal: { outcome: "blocked" as const, distance: fieldGoalAction.yards, kicker: fieldGoalAction.actor },
+        possessionChange: changeView,
+        returnPath,
+        blockedKick,
+      };
+    }
     const goalAbsolute = base.direction === "right" ? 100 : 0;
     const outcome = fieldGoalAction.outcome === "good" ? "good" as const : "missed" as const;
     return {
@@ -217,6 +297,9 @@ export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
       phases: [] as ReplayPhaseSummary[],
       downDistance: downDistance(play),
       fieldGoal: { outcome, distance: fieldGoalAction.yards, kicker: fieldGoalAction.actor },
+      possessionChange: changeView,
+      returnPath,
+      blockedKick,
     };
   }
 
@@ -233,8 +316,8 @@ export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
   const noMovement = base.startPercent !== null && displayFinalPercent !== null && Math.abs(base.startPercent - displayFinalPercent) <= .1;
   const startAbsolute = base.startPosition ? absoluteYardLine(base.startPosition, game) : null;
   const displayFinalAbsolute = displayFinalPosition ? absoluteYardLine(displayFinalPosition, game) : null;
-  const displayMovementYards = noMovement ? 0 : startAbsolute !== null && displayFinalAbsolute !== null && base.direction !== "unknown"
-    ? Math.round((displayFinalAbsolute - startAbsolute) * (base.direction === "right" ? 1 : -1)) : null;
+  const displayMovementYards = returned?.yards ?? (noMovement ? 0 : startAbsolute !== null && displayFinalAbsolute !== null && base.direction !== "unknown"
+    ? Math.round((displayFinalAbsolute - startAbsolute) * (base.direction === "right" ? 1 : -1)) : null);
   const mode: ReplayFieldMode = noMovement ? "no-movement" : displayFinalPosition ? "movement" : "unknown";
   const targetDistance = action.depth === "deep" ? 24 : 14;
   const schematicTargetPercent = visualization === "pass-incomplete" && base.startPercent !== null && base.direction !== "unknown"
@@ -257,10 +340,13 @@ export function replayFieldView(game: Pick<GameData, "teams">, play?: Play) {
     phases: [] as ReplayPhaseSummary[],
     downDistance: downDistance(play),
     fieldGoal: undefined,
+    possessionChange: changeView,
+    returnPath,
+    blockedKick,
   };
 }
 
-export type DriveResultCategory = "touchdown" | "field-goal-good" | "field-goal-missed" | "fumble" | "interception" | "downs" | "safety" | "punt" | "end" | "other";
+export type DriveResultCategory = "touchdown" | "field-goal-good" | "field-goal-missed" | "blocked-field-goal" | "fumble" | "interception" | "downs" | "safety" | "punt" | "end" | "other";
 
 export function driveResultView(game: Pick<GameData, "teams">, drive: Drive, play: Play, next?: Play) {
   const raw = drive.result.trim();
@@ -269,7 +355,8 @@ export function driveResultView(game: Pick<GameData, "teams">, drive: Drive, pla
   const recovery = [...play.details.events].reverse().find((event) => event.type === "recovery" && event.teamId && event.teamId !== drive.teamId);
   const interception = [...play.details.events].reverse().find((event) => event.type === "interception" && event.teamId);
   let category: DriveResultCategory = "other", label = raw.toUpperCase();
-  if (/touchdown/i.test(raw)) { category = "touchdown"; label = "TOUCHDOWN"; }
+  if (/blocked.*field goal|blocked fg/i.test(raw) || action.type === "field-goal" && action.outcome === "blocked") { category = "blocked-field-goal"; label = "BLOCKED FIELD GOAL"; }
+  else if (/touchdown/i.test(raw)) { category = "touchdown"; label = "TOUCHDOWN"; }
   else if (/missed.*field goal|missed fg/i.test(raw) || action.type === "field-goal" && action.outcome !== "good") { category = "field-goal-missed"; label = "FIELD GOAL MISSED"; }
   else if (/field goal/i.test(raw)) { category = "field-goal-good"; label = "FIELD GOAL GOOD"; }
   else if (/fumble/i.test(raw) || recovery) { category = "fumble"; label = recovery ? "FUMBLE LOST" : "FUMBLE"; }
