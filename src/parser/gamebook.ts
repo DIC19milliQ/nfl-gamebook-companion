@@ -557,8 +557,10 @@ function linkPlayers(players: Map<string, PlayerDraft>, plays: Play[], teams: [T
 function linkScoring(scoring: ScoringPlay[], plays: Play[]) {
   for (const score of scoring) {
     const player = score.description.match(PLAYER_RE)?.[0];
+    const blockedKickReturn = /return of blocked field goal/i.test(score.description);
     const candidates = plays.filter((play) => play.quarter === score.quarter && (!player || play.description.includes(player)) &&
-      (/Field Goal/i.test(score.description) ? /field goal is GOOD/i.test(play.description) : /TOUCHDOWN/i.test(play.description)));
+      (blockedKickReturn ? /field goal is BLOCKED/i.test(play.description) && /TOUCHDOWN/i.test(play.description)
+        : /Field Goal/i.test(score.description) ? /field goal is GOOD/i.test(play.description) : /TOUCHDOWN/i.test(play.description)));
     score.playIndex = candidates.sort((a, b) => Math.abs(clockSeconds(a.clock) - clockSeconds(score.clock)) - Math.abs(clockSeconds(b.clock) - clockSeconds(score.clock)))[0]?.index ?? -1;
   }
 }
