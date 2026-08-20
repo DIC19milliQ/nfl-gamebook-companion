@@ -48,6 +48,19 @@ describe("remote Gamebook loading", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
+  it("reports Center network failures and NFL HTTP failures", async () => {
+    const offlineCenter = vi.fn().mockRejectedValue(new TypeError("network error"));
+    await expect(fetchRemoteGamebook(gameId, { fetcher: offlineCenter })).rejects.toThrow("Center could not be reached");
+
+    const unavailablePdf = vi.fn()
+      .mockResolvedValueOnce(response(JSON.stringify({ gameId, gamebookUrl: pdfUrl }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }))
+      .mockResolvedValueOnce(response(null, { status: 503, headers: { "Content-Type": "application/pdf" }, url: pdfUrl }));
+    await expect(fetchRemoteGamebook(gameId, { fetcher: unavailablePdf })).rejects.toThrow("HTTP 503");
+  });
+
   it("rejects non-PDF content, unsafe redirects, oversized files, and invalid magic bytes", async () => {
     await expect(validateAndReadPdf(response("html", { status: 200, headers: { "Content-Type": "text/html" }, url: pdfUrl }))).rejects.toThrow("not identified as a PDF");
     await expect(validateAndReadPdf(response(pdfBytes, { status: 200, headers: { "Content-Type": "application/pdf" }, url: "https://example.com/file.pdf" }))).rejects.toThrow("unapproved");
