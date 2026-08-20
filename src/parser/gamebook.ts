@@ -19,6 +19,7 @@ import type {
   TeamStat,
 } from "../types";
 import { parsePlayDetails } from "./playText";
+import { isSameTeamCode } from "../teamCodes";
 
 const PLAYER_RE = /\b[A-Z][a-z]?\.[A-Z][A-Za-z'-]*(?:-[A-Za-z]+)*/g;
 const PLAYER_EXACT_RE = /^[A-Z][a-z]?\.[A-Z][A-Za-z'-]*(?:-[A-Za-z]+)*$/;
@@ -215,12 +216,12 @@ function yardsFromDescription(description: string) {
   return null;
 }
 
-function fieldPosition(yardLine: string, possession: TeamId) {
+export function fieldPosition(yardLine: string, possession: TeamId) {
   if (yardLine === "50") return 50;
   const match = yardLine.match(/^([A-Z]{2,3})\s+(\d+)$/);
   if (!match) return null;
   const yard = number(match[2]);
-  return match[1] === possession ? yard : 100 - yard;
+  return isSameTeamCode(match[1], possession) ? yard : 100 - yard;
 }
 
 function refreshPlayDetails(play: Play, teams: [Team, Team]) {
