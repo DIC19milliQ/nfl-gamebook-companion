@@ -3,6 +3,8 @@ dist/
 output/
 .playwright-cli/
 coverage/
+research/cache/
+research/output/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db

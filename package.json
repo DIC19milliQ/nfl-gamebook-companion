@@ -9,6 +9,8 @@
     "preview": "node scripts/serve.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "research:alignment": "vite-node research/run-alignment.ts",
+    "research:check": "tsc -p tsconfig.research.json",
     "check": "npm run test && npm run build"
   },
   "dependencies": {
