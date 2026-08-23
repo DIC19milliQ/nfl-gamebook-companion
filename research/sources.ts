@@ -54,6 +54,10 @@ export async function loadNflverseGame(path: string, gameId: string) {
       drive: optionalNumber(row.drive),
       epa: optionalNumber(row.epa),
       wp: optionalNumber(row.wp),
+      returnYards: optionalNumber(row.return_yards),
+      replayResult: row.replay_or_challenge_result || undefined,
+      fieldGoalResult: row.field_goal_result || undefined,
+      penaltyType: row.penalty_type || undefined,
       flags: {
         noPlay: row.play_type === "no_play" || flag(row.no_play),
         penalty: flag(row.penalty),
@@ -65,6 +69,19 @@ export async function loadNflverseGame(path: string, gameId: string) {
         fieldGoal: row.play_type === "field_goal" || flag(row.field_goal_attempt),
         extraPoint: row.play_type === "extra_point" || flag(row.extra_point_attempt),
         timeout: flag(row.timeout) || /^Timeout /i.test(row.desc),
+        interceptionReturn: flag(row.interception) && (optionalNumber(row.return_yards) ?? 0) !== 0,
+        fumble: flag(row.fumble),
+        fumbleReturn: flag(row.fumble) && (
+          (optionalNumber(row.fumble_recovery_1_yards) ?? 0) !== 0
+          || (optionalNumber(row.fumble_recovery_2_yards) ?? 0) !== 0
+        ),
+        replay: flag(row.replay_or_challenge),
+        replayReversal: flag(row.replay_or_challenge) && /reversed|overturned/i.test(`${row.replay_or_challenge_result} ${row.desc}`),
+        blockedFieldGoal: flag(row.field_goal_attempt) && /block/i.test(`${row.field_goal_result} ${row.desc}`),
+        blockedPunt: flag(row.punt_blocked),
+        safety: flag(row.safety),
+        offsettingPenalty: /offset/i.test(row.desc),
+        kickoffPenalty: flag(row.kickoff_attempt) && flag(row.penalty),
       },
     });
     sourceIndex += 1;

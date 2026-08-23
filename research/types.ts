@@ -33,6 +33,10 @@ export interface NflversePlay {
   drive?: number;
   epa?: number;
   wp?: number;
+  returnYards?: number;
+  replayResult?: string;
+  fieldGoalResult?: string;
+  penaltyType?: string;
   flags: {
     noPlay: boolean;
     penalty: boolean;
@@ -44,6 +48,16 @@ export interface NflversePlay {
     fieldGoal: boolean;
     extraPoint: boolean;
     timeout: boolean;
+    interceptionReturn?: boolean;
+    fumble?: boolean;
+    fumbleReturn?: boolean;
+    replay?: boolean;
+    replayReversal?: boolean;
+    blockedFieldGoal?: boolean;
+    blockedPunt?: boolean;
+    safety?: boolean;
+    offsettingPenalty?: boolean;
+    kickoffPenalty?: boolean;
   };
 }
 

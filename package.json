@@ -10,6 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "research:alignment": "vite-node research/run-alignment.ts",
+    "research:batch": "vite-node research/run-batch.ts",
+    "research:finalize": "vite-node research/finalize-phase-3.ts",
     "research:check": "tsc -p tsconfig.research.json",
     "check": "npm run test && npm run build"
   },

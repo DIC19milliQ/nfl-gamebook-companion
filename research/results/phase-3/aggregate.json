@@ -1,0 +1,485 @@
+{
+  "generatedAt": "2026-08-23T15:40:19.401Z",
+  "auditedAt": "2026-08-23T15:40:00.000Z",
+  "matcherVersion": "research-0.1.0",
+  "matcherSha256": "5d09bee7bf4009783f2d85660aa459bb0a34b3f8184ebcb43285b800539dc2e4",
+  "games": [
+    {
+      "gameId": "2025_09_CHI_CIN",
+      "round": "Week 9",
+      "matchup": "CHI @ CIN",
+      "reason": "Replay reversals, blocked field goal, turnovers, kickoff penalties, and high scoring.",
+      "summary": {
+        "gameId": "2025_09_CHI_CIN",
+        "matcherVersion": "research-0.1.0",
+        "gamebookPlays": 159,
+        "nflverseRows": 204,
+        "counts": {
+          "oneToOne": 151,
+          "oneToMany": 8,
+          "manyToOne": 0,
+          "ambiguous": 0,
+          "unmatchedGamebook": 0,
+          "unmatchedNflverse": 36
+        },
+        "highConfidence": {
+          "numerator": 159,
+          "denominator": 159,
+          "rate": 1
+        },
+        "externalReference": {
+          "numerator": 168,
+          "denominator": 204,
+          "rate": 0.8235294117647058
+        },
+        "confidence": {
+          "minimum": 0.8533,
+          "median": 1,
+          "bins": {
+            "0.95-1.00": 143,
+            "0.90-0.95": 5,
+            "0.85-0.90": 11,
+            "0.80-0.85": 0,
+            "0.75-0.80": 0
+          }
+        }
+      }
+    },
+    {
+      "gameId": "2025_04_PHI_TB",
+      "round": "Week 4",
+      "matchup": "PHI @ TB",
+      "reason": "Blocked punt, safety, replay, turnovers, and kickoff penalties.",
+      "summary": {
+        "gameId": "2025_04_PHI_TB",
+        "matcherVersion": "research-0.1.0",
+        "gamebookPlays": 147,
+        "nflverseRows": 179,
+        "counts": {
+          "oneToOne": 142,
+          "oneToMany": 5,
+          "manyToOne": 0,
+          "ambiguous": 0,
+          "unmatchedGamebook": 0,
+          "unmatchedNflverse": 25
+        },
+        "highConfidence": {
+          "numerator": 147,
+          "denominator": 147,
+          "rate": 1
+        },
+        "externalReference": {
+          "numerator": 154,
+          "denominator": 179,
+          "rate": 0.8603351955307262
+        },
+        "confidence": {
+          "minimum": 0.8306,
+          "median": 1,
+          "bins": {
+            "0.95-1.00": 130,
+            "0.90-0.95": 8,
+            "0.85-0.90": 7,
+            "0.80-0.85": 2,
+            "0.75-0.80": 0
+          }
+        }
+      }
+    },
+    {
+      "gameId": "2025_14_PHI_LAC",
+      "round": "Week 14",
+      "matchup": "PHI @ LAC",
+      "reason": "Overtime, repeated interceptions/returns, lost fumbles/returns, and kick-heavy scoring.",
+      "summary": {
+        "gameId": "2025_14_PHI_LAC",
+        "matcherVersion": "research-0.1.0",
+        "gamebookPlays": 166,
+        "nflverseRows": 196,
+        "counts": {
+          "oneToOne": 164,
+          "oneToMany": 2,
+          "manyToOne": 0,
+          "ambiguous": 0,
+          "unmatchedGamebook": 0,
+          "unmatchedNflverse": 28
+        },
+        "highConfidence": {
+          "numerator": 166,
+          "denominator": 166,
+          "rate": 1
+        },
+        "externalReference": {
+          "numerator": 168,
+          "denominator": 196,
+          "rate": 0.8571428571428571
+        },
+        "confidence": {
+          "minimum": 0.8593,
+          "median": 1,
+          "bins": {
+            "0.95-1.00": 151,
+            "0.90-0.95": 9,
+            "0.85-0.90": 6,
+            "0.80-0.85": 0,
+            "0.75-0.80": 0
+          }
+        }
+      }
+    },
+    {
+      "gameId": "2025_05_TEN_ARI",
+      "round": "Week 5",
+      "matchup": "TEN @ ARI",
+      "reason": "Four lost fumbles, replay reversals, offsetting penalty, and kickoff penalties.",
+      "summary": {
+        "gameId": "2025_05_TEN_ARI",
+        "matcherVersion": "research-0.1.0",
+        "gamebookPlays": 153,
+        "nflverseRows": 180,
+        "counts": {
+          "oneToOne": 148,
+          "oneToMany": 4,
+          "manyToOne": 0,
+          "ambiguous": 1,
+          "unmatchedGamebook": 0,
+          "unmatchedNflverse": 20
+        },
+        "highConfidence": {
+          "numerator": 152,
+          "denominator": 153,
+          "rate": 0.9934640522875817
+        },
+        "externalReference": {
+          "numerator": 160,
+          "denominator": 180,
+          "rate": 0.8888888888888888
+        },
+        "confidence": {
+          "minimum": 0.7659,
+          "median": 0.92,
+          "bins": {
+            "0.95-1.00": 68,
+            "0.90-0.95": 34,
+            "0.85-0.90": 44,
+            "0.80-0.85": 5,
+            "0.75-0.80": 1
+          }
+        }
+      }
+    },
+    {
+      "gameId": "2025_06_DET_KC",
+      "round": "Week 6",
+      "matchup": "DET @ KC",
+      "reason": "Ordinary control with no flagged turnover, replay, blocked kick, safety, offsetting, or kickoff penalty.",
+      "summary": {
+        "gameId": "2025_06_DET_KC",
+        "matcherVersion": "research-0.1.0",
+        "gamebookPlays": 125,
+        "nflverseRows": 154,
+        "counts": {
+          "oneToOne": 119,
+          "oneToMany": 6,
+          "manyToOne": 0,
+          "ambiguous": 0,
+          "unmatchedGamebook": 0,
+          "unmatchedNflverse": 23
+        },
+        "highConfidence": {
+          "numerator": 125,
+          "denominator": 125,
+          "rate": 1
+        },
+        "externalReference": {
+          "numerator": 131,
+          "denominator": 154,
+          "rate": 0.8506493506493507
+        },
+        "confidence": {
+          "minimum": 0.865,
+          "median": 1,
+          "bins": {
+            "0.95-1.00": 115,
+            "0.90-0.95": 4,
+            "0.85-0.90": 6,
+            "0.80-0.85": 0,
+            "0.75-0.80": 0
+          }
+        }
+      }
+    },
+    {
+      "gameId": "2025_06_SEA_JAX",
+      "round": "Week 6",
+      "matchup": "SEA @ JAX",
+      "reason": "Ordinary control with high punt volume and only one kickoff penalty among targeted rare events.",
+      "summary": {
+        "gameId": "2025_06_SEA_JAX",
+        "matcherVersion": "research-0.1.0",
+        "gamebookPlays": 150,
+        "nflverseRows": 175,
+        "counts": {
+          "oneToOne": 146,
+          "oneToMany": 4,
+          "manyToOne": 0,
+          "ambiguous": 0,
+          "unmatchedGamebook": 0,
+          "unmatchedNflverse": 21
+        },
+        "highConfidence": {
+          "numerator": 150,
+          "denominator": 150,
+          "rate": 1
+        },
+        "externalReference": {
+          "numerator": 154,
+          "denominator": 175,
+          "rate": 0.88
+        },
+        "confidence": {
+          "minimum": 0.8417,
+          "median": 1,
+          "bins": {
+            "0.95-1.00": 143,
+            "0.90-0.95": 2,
+            "0.85-0.90": 4,
+            "0.80-0.85": 1,
+            "0.75-0.80": 0
+          }
+        }
+      }
+    }
+  ],
+  "metrics": {
+    "gamebookHighConfidenceCoverage": {
+      "numerator": 899,
+      "denominator": 900,
+      "rate": 0.9988888888888889
+    },
+    "ambiguousRate": {
+      "numerator": 1,
+      "denominator": 900,
+      "rate": 0.0011111111111111111
+    },
+    "unmatchedGamebookRate": {
+      "numerator": 0,
+      "denominator": 900,
+      "rate": 0
+    },
+    "falseMatchRate": {
+      "numerator": 0,
+      "denominator": 899,
+      "rate": 0
+    },
+    "externalRowReferenceRate": {
+      "numerator": 935,
+      "denominator": 1088,
+      "rate": 0.859375
+    }
+  },
+  "confidence": {
+    "minimum": 0.7659,
+    "median": 1,
+    "bins": {
+      "0.95-1.00": 750,
+      "0.90-0.95": 62,
+      "0.85-0.90": 78,
+      "0.80-0.85": 8,
+      "0.75-0.80": 1
+    }
+  },
+  "eventSuccess": {
+    "Interception": {
+      "correct": 9,
+      "total": 9
+    },
+    "Interception return": {
+      "correct": 6,
+      "total": 6
+    },
+    "Fumble": {
+      "correct": 15,
+      "total": 16
+    },
+    "Lost fumble": {
+      "correct": 8,
+      "total": 8
+    },
+    "Fumble return": {
+      "correct": 3,
+      "total": 3
+    },
+    "Replay review": {
+      "correct": 13,
+      "total": 13
+    },
+    "Replay reversal": {
+      "correct": 11,
+      "total": 11
+    },
+    "Blocked FG": {
+      "correct": 1,
+      "total": 1
+    },
+    "Blocked punt": {
+      "correct": 1,
+      "total": 1
+    },
+    "Safety": {
+      "correct": 1,
+      "total": 1
+    },
+    "Offsetting penalty": {
+      "correct": 1,
+      "total": 1
+    },
+    "Unusual no-play": {
+      "correct": 1,
+      "total": 1
+    },
+    "Kickoff penalty": {
+      "correct": 6,
+      "total": 7
+    },
+    "Penalty / no-play": {
+      "correct": 74,
+      "total": 76
+    },
+    "Touchdown": {
+      "correct": 33,
+      "total": 34
+    },
+    "Extra point": {
+      "correct": 29,
+      "total": 31
+    },
+    "Field goal": {
+      "correct": 28,
+      "total": 28
+    },
+    "Punt": {
+      "correct": 53,
+      "total": 53
+    },
+    "Ordinary scrimmage": {
+      "correct": 757,
+      "total": 757
+    }
+  },
+  "unmatchedExternal": {
+    "total": 153,
+    "countsByCategory": {
+      "Administrative timeout": 53,
+      "Parser granularity difference / conversion": 3,
+      "Parser granularity difference / PAT": 2,
+      "Parser granularity difference / scoring continuation": 1,
+      "Quarter/game marker": 31,
+      "Standalone kickoff": 63
+    }
+  },
+  "unmatchedOrAmbiguousGamebook": [
+    {
+      "gameId": "2025_05_TEN_ARI",
+      "gamebookPlayId": "play-123",
+      "status": "ambiguous",
+      "confidence": 0.7385,
+      "classification": [
+        "Gamebook / nflverse play granularity difference",
+        "source description difference"
+      ],
+      "selectedExternalPlayIds": [
+        "3876",
+        "3899",
+        "3914"
+      ],
+      "correctExternalPlayIds": [
+        "3876",
+        "3899",
+        "3914"
+      ],
+      "finding": "The alignment is substantively correct (Pollard TD, missed PAT, kickoff penalty), but the Gamebook combines all components and an injury update. ARZ versus nflverse ARI also removes yard-line/possession evidence, leaving confidence below 0.75. It is not counted as a false match because ambiguous is excluded from matched coverage."
+    }
+  ],
+  "falseMatches": [],
+  "auditMethod": {
+    "allAlignmentsScreened": 900,
+    "matchedScreened": 899,
+    "screen": "Selected primary row must be monotonic and normally share normalized clock with the Gamebook Play and have description Dice similarity >= 0.35. All exceptions were reviewed from both raw descriptions.",
+    "screenExceptionsReviewed": 4,
+    "lowConfidenceUnder085Reviewed": 10,
+    "sameClockAlternativeCasesReviewed": 1,
+    "oneToManyReviewed": 30,
+    "manyToOneReviewed": 0,
+    "turnoverAlignmentsReviewed": 15,
+    "scoringAlignmentsRuleChecked": 61,
+    "penaltyNoPlayAlignmentsRuleChecked": 74,
+    "replayAlignmentsReviewed": 13,
+    "blockedKickAlignmentsReviewed": 2,
+    "safetyAlignmentsReviewed": 1,
+    "overtimeAlignmentsReviewed": 17
+  },
+  "parserIssues": [
+    {
+      "code": "no-play-boolean-false",
+      "count": 13,
+      "finding": "Thirteen Gamebook descriptions contain 'No Play' while parsed noPlay remains false. They still aligned correctly."
+    },
+    {
+      "code": "opening-kickoff-touchdown-omitted",
+      "count": 1,
+      "finding": "CHI @ CIN opening kickoff return touchdown (nflverse 39) and its PAT (63) produce no Gamebook Play, so neither can be referenced."
+    },
+    {
+      "code": "blocked-punt-pat-omitted",
+      "count": 1,
+      "finding": "PHI @ TB blocked-punt return TD is a Gamebook Play, but the following PAT row (nflverse 211) is not attached to its description and remains external-only."
+    },
+    {
+      "code": "conversion-and-penalty-merged",
+      "count": 4,
+      "finding": "Three two-point conversion rows and one scoring-continuation no-play row are embedded in preceding Gamebook scoring descriptions but are not separately referenced."
+    },
+    {
+      "code": "standalone-kickoff-omitted",
+      "count": 63,
+      "finding": "Standalone kickoffs generally do not become Gamebook Plays; six kickoff-penalty rows attach through existing 1:many behavior and one kickoff penalty remains external-only."
+    },
+    {
+      "code": "administrative-rows-omitted",
+      "count": 84,
+      "finding": "Fifty-three timeout rows and thirty-one quarter/game markers have no Gamebook Play, as expected from parser granularity."
+    }
+  ],
+  "closestRiskExamples": [
+    {
+      "gameId": "2025_05_TEN_ARI",
+      "gamebookPlayId": "play-20",
+      "externalPlayId": "656",
+      "confidence": 0.7659,
+      "finding": "Correct Spears run despite Gamebook 5:49 versus nflverse 5:50 and ARZ versus ARI."
+    },
+    {
+      "gameId": "2025_06_SEA_JAX",
+      "gamebookPlayId": "play-114",
+      "externalPlayId": "3361",
+      "alternativeExternalPlayId": "3337",
+      "confidence": 1,
+      "finding": "Only same-clock alternative case. The selected Walker run is exact; the alternative is the preceding kickoff and trails by a 0.2421 confidence margin."
+    },
+    {
+      "gameId": "2025_04_PHI_TB",
+      "gamebookPlayId": "play-147",
+      "externalPlayId": "4548",
+      "confidence": 0.8458,
+      "finding": "Correct end-zone safety; low confidence comes from sparse/missing state fields rather than a competing row."
+    }
+  ],
+  "decision": {
+    "dalPhiOverfit": false,
+    "productionFoundation": true,
+    "matcherV02BeforeIntegration": false,
+    "proceedToCompanionIntegrationDesign": true,
+    "rationale": "Six blind games reached 99.89% high-confidence Gamebook coverage, 0.11% ambiguous, 0% unmatched Gamebook, and 0 audited false matches. Ordinary scrimmage rows were fully referenced; the missed event rows are explained by parser/source granularity."
+  }
+}
