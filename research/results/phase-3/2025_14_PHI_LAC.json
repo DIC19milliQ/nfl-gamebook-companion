@@ -1,0 +1,2420 @@
+{
+  "generatedAt": "2026-08-23T15:40:08.404Z",
+  "auditedAt": "2026-08-23T15:40:00.000Z",
+  "config": {
+    "id": "2025_14_PHI_LAC",
+    "slug": "eagles-at-chargers-2025-reg-14",
+    "round": "Week 14",
+    "reason": "Overtime, repeated interceptions/returns, lost fumbles/returns, and kick-heavy scoring."
+  },
+  "matcherVersion": "research-0.1.0",
+  "matcherSha256": "5d09bee7bf4009783f2d85660aa459bb0a34b3f8184ebcb43285b800539dc2e4",
+  "sources": {
+    "nflverseSchedule": {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/schedules/games.csv",
+      "path": "research/cache/games.csv",
+      "bytes": 2177169,
+      "sha256": "b24c3d9019b38551570a063ff3e9d7f694452652300fdf69990a43042bd8320f",
+      "retrievedAt": "2026-08-23T15:24:18.094Z"
+    },
+    "nflversePbp": {
+      "url": "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_2025.csv.gz",
+      "path": "research/cache/play_by_play_2025.csv.gz",
+      "bytes": 19105296,
+      "sha256": "2f135887790a013fd004e609e37096bb4816d5cc80b9f19122e1bad478961978",
+      "retrievedAt": "2026-08-23T15:24:19.810Z"
+    },
+    "centerMetadata": {
+      "url": "https://spoiler-free-nfl-gamebooks.dic19.chatgpt.site/api/companion/gamebook?game=eagles-at-chargers-2025-reg-14",
+      "path": "research/cache/eagles-at-chargers-2025-reg-14.json",
+      "bytes": 479,
+      "sha256": "cdaab4ea074d286dab50895b31dc1ef33a850e19157aba62841b80c1bc72c86b",
+      "retrievedAt": "2026-08-23T15:25:58.672Z"
+    },
+    "gamebookPdf": {
+      "url": "https://static.www.nfl.com/image/upload/v1765279701/gamecenter/f8984006-311e-11f0-b670-ae1250fadad1.pdf",
+      "path": "research/cache/eagles-at-chargers-2025-reg-14.pdf",
+      "bytes": 364110,
+      "sha256": "a59293238e8b2efe0be8b856bef02840e6a1779f253ce5df26220a87c5a798f6",
+      "retrievedAt": "2026-08-23T15:27:27.725Z"
+    }
+  },
+  "centerGameId": "eagles-at-chargers-2025-reg-14",
+  "nflverseGameId": "2025_14_PHI_LAC",
+  "identityEvidence": {
+    "season": true,
+    "seasonType": true,
+    "week": true,
+    "awayTeam": true,
+    "homeTeam": true,
+    "kickoff": true
+  },
+  "parser": {
+    "validation": {
+      "status": "complete",
+      "issues": [],
+      "metrics": {
+        "playerCountByTeam": {
+          "PHI": 49,
+          "LAC": 49
+        },
+        "positionCoverageByTeam": {
+          "PHI": 0.9795918367346939,
+          "LAC": 1
+        },
+        "snapCountByTeam": {
+          "PHI": 46,
+          "LAC": 47
+        },
+        "teamStatValueCountByTeam": {
+          "PHI": 40,
+          "LAC": 40
+        },
+        "structuredPlayCount": 166,
+        "rawPlayCount": 0,
+        "penaltyEventCount": 14
+      }
+    },
+    "warnings": []
+  },
+  "summary": {
+    "gameId": "2025_14_PHI_LAC",
+    "matcherVersion": "research-0.1.0",
+    "gamebookPlays": 166,
+    "nflverseRows": 196,
+    "counts": {
+      "oneToOne": 164,
+      "oneToMany": 2,
+      "manyToOne": 0,
+      "ambiguous": 0,
+      "unmatchedGamebook": 0,
+      "unmatchedNflverse": 28
+    },
+    "highConfidence": {
+      "numerator": 166,
+      "denominator": 166,
+      "rate": 1
+    },
+    "externalReference": {
+      "numerator": 168,
+      "denominator": 196,
+      "rate": 0.8571428571428571
+    },
+    "confidence": {
+      "minimum": 0.8593,
+      "median": 1,
+      "bins": {
+        "0.95-1.00": 151,
+        "0.90-0.95": 9,
+        "0.85-0.90": 6,
+        "0.80-0.85": 0,
+        "0.75-0.80": 0
+      }
+    }
+  },
+  "eventCoverage": {
+    "Interception": {
+      "referenced": 5,
+      "total": 5
+    },
+    "Interception return": {
+      "referenced": 5,
+      "total": 5
+    },
+    "Fumble": {
+      "referenced": 3,
+      "total": 4
+    },
+    "Lost fumble": {
+      "referenced": 2,
+      "total": 2
+    },
+    "Fumble return": {
+      "referenced": 1,
+      "total": 1
+    },
+    "Replay review": {
+      "referenced": 2,
+      "total": 2
+    },
+    "Replay reversal": {
+      "referenced": 2,
+      "total": 2
+    },
+    "Blocked FG": {
+      "referenced": 0,
+      "total": 0
+    },
+    "Blocked punt": {
+      "referenced": 0,
+      "total": 0
+    },
+    "Safety": {
+      "referenced": 0,
+      "total": 0
+    },
+    "Offsetting penalty": {
+      "referenced": 0,
+      "total": 0
+    },
+    "Unusual no-play": {
+      "referenced": 0,
+      "total": 0
+    },
+    "Kickoff penalty": {
+      "referenced": 0,
+      "total": 0
+    },
+    "Penalty / no-play": {
+      "referenced": 13,
+      "total": 13
+    },
+    "Touchdown": {
+      "referenced": 2,
+      "total": 2
+    },
+    "Extra point": {
+      "referenced": 2,
+      "total": 2
+    },
+    "Field goal": {
+      "referenced": 10,
+      "total": 10
+    },
+    "Punt": {
+      "referenced": 8,
+      "total": 8
+    },
+    "Ordinary scrimmage": {
+      "referenced": 135,
+      "total": 135
+    }
+  },
+  "audit": {
+    "falseMatches": [],
+    "gamebookIssues": []
+  },
+  "unmatchedExternal": {
+    "countsByCategory": {
+      "Administrative timeout": 8,
+      "Quarter/game marker": 6,
+      "Standalone kickoff": 14
+    },
+    "rows": [
+      {
+        "category": "Quarter/game marker",
+        "providerPlayId": "1",
+        "quarter": 1,
+        "clock": "15:00",
+        "description": "GAME"
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "41",
+        "quarter": 1,
+        "clock": "15:00",
+        "playType": "kickoff",
+        "description": "11-C.Dicker kicks 55 yards from LAC 35 to PHI 10. 18-B.Covey to PHI 33 for 23 yards (53-D.Phillips)."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "392",
+        "quarter": 1,
+        "clock": "08:49",
+        "playType": "kickoff",
+        "description": "11-C.Dicker kicks 65 yards from LAC 35 to end zone, Touchback to the PHI 35."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "672",
+        "quarter": 1,
+        "clock": "03:22",
+        "playType": "kickoff",
+        "description": "4-J.Elliott kicks 57 yards from PHI 35 to LAC 8. 30-K.Vidal to LAC 34 for 26 yards (36-C.Latu)."
+      },
+      {
+        "category": "Quarter/game marker",
+        "providerPlayId": "918",
+        "quarter": 1,
+        "clock": "00:00",
+        "description": "END QUARTER 1"
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "1646",
+        "quarter": 2,
+        "clock": "04:55",
+        "playType": "kickoff",
+        "description": "11-C.Dicker kicks 62 yards from LAC 35 to PHI 3. 18-B.Covey to PHI 28 for 25 yards (53-D.Phillips)."
+      },
+      {
+        "category": "Administrative timeout",
+        "providerPlayId": "1943",
+        "quarter": 2,
+        "clock": "01:13",
+        "playType": "no_play",
+        "description": "Timeout #1 by PHI at 01:13."
+      },
+      {
+        "category": "Administrative timeout",
+        "providerPlayId": "1972",
+        "quarter": 2,
+        "clock": "01:10",
+        "playType": "no_play",
+        "description": "Timeout #1 by LAC at 01:10."
+      },
+      {
+        "category": "Administrative timeout",
+        "providerPlayId": "2040",
+        "quarter": 2,
+        "clock": "00:59",
+        "playType": "no_play",
+        "description": "Timeout #2 by LAC at 00:59."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "2150",
+        "quarter": 2,
+        "clock": "00:48",
+        "playType": "kickoff",
+        "description": "4-J.Elliott kicks 62 yards from PHI 35 to LAC 3. 28-H.Haskins to LAC 31 for 28 yards (54-J.Trotter; 21-S.Brown)."
+      },
+      {
+        "category": "Quarter/game marker",
+        "providerPlayId": "2308",
+        "quarter": 2,
+        "clock": "00:00",
+        "description": "END QUARTER 2"
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "2337",
+        "quarter": 3,
+        "clock": "15:00",
+        "playType": "kickoff",
+        "description": "4-J.Elliott kicks 60 yards from PHI 35 to LAC 5. 28-H.Haskins to LAC 33 for 28 yards (33-C.DeJean)."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "2768",
+        "quarter": 3,
+        "clock": "05:32",
+        "playType": "kickoff",
+        "description": "11-C.Dicker kicks 59 yards from LAC 35 to PHI 6. 18-B.Covey to PHI 35 for 29 yards (43-T.Dye). FUMBLES (43-T.Dye), touched at PHI 37, and recovers at PHI 36."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "2948",
+        "quarter": 3,
+        "clock": "03:22",
+        "playType": "kickoff",
+        "description": "4-J.Elliott kicks 57 yards from PHI 35 to LAC 8. 30-K.Vidal to LAC 25 for 17 yards (31-A.Sam)."
+      },
+      {
+        "category": "Quarter/game marker",
+        "providerPlayId": "3226",
+        "quarter": 3,
+        "clock": "00:00",
+        "description": "END QUARTER 3"
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "3284",
+        "quarter": 4,
+        "clock": "14:51",
+        "playType": "kickoff",
+        "description": "4-J.Elliott kicks 60 yards from PHI 35 to LAC 5. 30-K.Vidal to LAC 26 for 21 yards (42-S.Mondon)."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "3694",
+        "quarter": 4,
+        "clock": "07:26",
+        "playType": "kickoff",
+        "description": "11-C.Dicker kicks 61 yards from LAC 35 to PHI 4. 18-B.Covey to PHI 29 for 25 yards (92-J.Eboigbe)."
+      },
+      {
+        "category": "Administrative timeout",
+        "providerPlayId": "4029",
+        "quarter": 4,
+        "clock": "02:33",
+        "playType": "no_play",
+        "description": "Timeout #1 by LAC at 02:33."
+      },
+      {
+        "category": "Administrative timeout",
+        "providerPlayId": "4058",
+        "quarter": 4,
+        "clock": "02:27",
+        "playType": "no_play",
+        "description": "Timeout #2 by LAC at 02:27."
+      },
+      {
+        "category": "Administrative timeout",
+        "providerPlayId": "4088",
+        "quarter": 4,
+        "clock": "02:23",
+        "playType": "no_play",
+        "description": "Timeout #1 by PHI at 02:23."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "4126",
+        "quarter": 4,
+        "clock": "02:16",
+        "playType": "kickoff",
+        "description": "4-J.Elliott kicks 61 yards from PHI 35 to LAC 4. 30-K.Vidal to LAC 28 for 24 yards (30-J.Campbell; 83-K.Granson)."
+      },
+      {
+        "category": "Administrative timeout",
+        "providerPlayId": "4391",
+        "quarter": 4,
+        "clock": "00:21",
+        "playType": "no_play",
+        "description": "Timeout #3 by LAC at 00:21."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "4452",
+        "quarter": 4,
+        "clock": "00:08",
+        "playType": "kickoff",
+        "description": "11-C.Dicker kicks 64 yards from LAC 35 to PHI 1. 28-W.Shipley to PHI 28 for 27 yards (53-D.Phillips; 28-H.Haskins)."
+      },
+      {
+        "category": "Quarter/game marker",
+        "providerPlayId": "4497",
+        "quarter": 4,
+        "clock": "00:00",
+        "description": "END QUARTER 4"
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "4517",
+        "quarter": 5,
+        "clock": "10:00",
+        "playType": "kickoff",
+        "description": "4-J.Elliott kicks 58 yards from PHI 35 to LAC 7. 30-K.Vidal to LAC 30 for 23 yards (83-K.Granson)."
+      },
+      {
+        "category": "Standalone kickoff",
+        "providerPlayId": "4687",
+        "quarter": 5,
+        "clock": "06:24",
+        "playType": "kickoff",
+        "description": "11-C.Dicker kicks 63 yards from LAC 35 to PHI 2. 28-W.Shipley to PHI 31 for 29 yards (53-D.Phillips)."
+      },
+      {
+        "category": "Administrative timeout",
+        "providerPlayId": "4902",
+        "quarter": 5,
+        "clock": "03:23",
+        "playType": "no_play",
+        "description": "Timeout #1 by LAC at 03:23."
+      },
+      {
+        "category": "Quarter/game marker",
+        "providerPlayId": "5008",
+        "quarter": 5,
+        "clock": "02:29",
+        "description": "END GAME"
+      }
+    ]
+  },
+  "alignmentLedger": [
+    {
+      "gamebookPlayIds": [
+        "play-1"
+      ],
+      "externalPlayIds": [
+        "64"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.36356275303643715
+    },
+    {
+      "gamebookPlayIds": [
+        "play-2"
+      ],
+      "externalPlayIds": [
+        "87"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4240601503759398
+    },
+    {
+      "gamebookPlayIds": [
+        "play-3"
+      ],
+      "externalPlayIds": [
+        "109"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3778393351800553
+    },
+    {
+      "gamebookPlayIds": [
+        "play-4"
+      ],
+      "externalPlayIds": [
+        "134"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.37192982456140344
+    },
+    {
+      "gamebookPlayIds": [
+        "play-5"
+      ],
+      "externalPlayIds": [
+        "156"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4063157894736841
+    },
+    {
+      "gamebookPlayIds": [
+        "play-6"
+      ],
+      "externalPlayIds": [
+        "181"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-7"
+      ],
+      "externalPlayIds": [
+        "201"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-8"
+      ],
+      "externalPlayIds": [
+        "219"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.42105263157894735
+    },
+    {
+      "gamebookPlayIds": [
+        "play-9"
+      ],
+      "externalPlayIds": [
+        "248"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.40443213296398883
+    },
+    {
+      "gamebookPlayIds": [
+        "play-10"
+      ],
+      "externalPlayIds": [
+        "271"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4
+    },
+    {
+      "gamebookPlayIds": [
+        "play-11"
+      ],
+      "externalPlayIds": [
+        "302"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5333333333333332
+    },
+    {
+      "gamebookPlayIds": [
+        "play-12"
+      ],
+      "externalPlayIds": [
+        "329"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-13"
+      ],
+      "externalPlayIds": [
+        "351",
+        "377"
+      ],
+      "status": "matched",
+      "relationship": "1:many",
+      "confidence": 0.88,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-14"
+      ],
+      "externalPlayIds": [
+        "416"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3326315789473684
+    },
+    {
+      "gamebookPlayIds": [
+        "play-15"
+      ],
+      "externalPlayIds": [
+        "443"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.37192982456140344
+    },
+    {
+      "gamebookPlayIds": [
+        "play-16"
+      ],
+      "externalPlayIds": [
+        "470"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9859,
+      "marginToNextCandidate": 0.43503405572755405
+    },
+    {
+      "gamebookPlayIds": [
+        "play-17"
+      ],
+      "externalPlayIds": [
+        "508"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5506072874493926
+    },
+    {
+      "gamebookPlayIds": [
+        "play-18"
+      ],
+      "externalPlayIds": [
+        "531"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5284210526315789
+    },
+    {
+      "gamebookPlayIds": [
+        "play-19"
+      ],
+      "externalPlayIds": [
+        "553"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.614404432132964
+    },
+    {
+      "gamebookPlayIds": [
+        "play-20"
+      ],
+      "externalPlayIds": [
+        "578"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4168421052631578
+    },
+    {
+      "gamebookPlayIds": [
+        "play-21"
+      ],
+      "externalPlayIds": [
+        "600"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5205741626794258
+    },
+    {
+      "gamebookPlayIds": [
+        "play-22"
+      ],
+      "externalPlayIds": [
+        "627"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-23"
+      ],
+      "externalPlayIds": [
+        "652"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9077,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-24"
+      ],
+      "externalPlayIds": [
+        "702"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5073684210526315
+    },
+    {
+      "gamebookPlayIds": [
+        "play-25"
+      ],
+      "externalPlayIds": [
+        "727"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-26"
+      ],
+      "externalPlayIds": [
+        "749"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.976,
+      "marginToNextCandidate": 0.4010526315789472
+    },
+    {
+      "gamebookPlayIds": [
+        "play-27"
+      ],
+      "externalPlayIds": [
+        "773"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.99,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-28"
+      ],
+      "externalPlayIds": [
+        "811"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5894736842105261
+    },
+    {
+      "gamebookPlayIds": [
+        "play-29"
+      ],
+      "externalPlayIds": [
+        "839"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-30"
+      ],
+      "externalPlayIds": [
+        "859"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-31"
+      ],
+      "externalPlayIds": [
+        "888"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-32"
+      ],
+      "externalPlayIds": [
+        "938"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5741626794258372
+    },
+    {
+      "gamebookPlayIds": [
+        "play-33"
+      ],
+      "externalPlayIds": [
+        "1006"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-34"
+      ],
+      "externalPlayIds": [
+        "1032"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.42105263157894735
+    },
+    {
+      "gamebookPlayIds": [
+        "play-35"
+      ],
+      "externalPlayIds": [
+        "1061"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9609,
+      "marginToNextCandidate": 0.430533848036908
+    },
+    {
+      "gamebookPlayIds": [
+        "play-36"
+      ],
+      "externalPlayIds": [
+        "1099"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-37"
+      ],
+      "externalPlayIds": [
+        "1126"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3287449392712549
+    },
+    {
+      "gamebookPlayIds": [
+        "play-38"
+      ],
+      "externalPlayIds": [
+        "1149"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.44777327935222655
+    },
+    {
+      "gamebookPlayIds": [
+        "play-39"
+      ],
+      "externalPlayIds": [
+        "1172"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-40"
+      ],
+      "externalPlayIds": [
+        "1198"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.35789473684210527
+    },
+    {
+      "gamebookPlayIds": [
+        "play-41"
+      ],
+      "externalPlayIds": [
+        "1227"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9859,
+      "marginToNextCandidate": 0.4131092436974789
+    },
+    {
+      "gamebookPlayIds": [
+        "play-42"
+      ],
+      "externalPlayIds": [
+        "1261"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3879699248120301
+    },
+    {
+      "gamebookPlayIds": [
+        "play-43"
+      ],
+      "externalPlayIds": [
+        "1291"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.38315789473684214
+    },
+    {
+      "gamebookPlayIds": [
+        "play-44"
+      ],
+      "externalPlayIds": [
+        "1316"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4168421052631578
+    },
+    {
+      "gamebookPlayIds": [
+        "play-45"
+      ],
+      "externalPlayIds": [
+        "1341"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.38315789473684214
+    },
+    {
+      "gamebookPlayIds": [
+        "play-46"
+      ],
+      "externalPlayIds": [
+        "1363"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5455377574370709
+    },
+    {
+      "gamebookPlayIds": [
+        "play-47"
+      ],
+      "externalPlayIds": [
+        "1390"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.984,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-48"
+      ],
+      "externalPlayIds": [
+        "1449"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.41203007518796997
+    },
+    {
+      "gamebookPlayIds": [
+        "play-49"
+      ],
+      "externalPlayIds": [
+        "1480"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.35789473684210515
+    },
+    {
+      "gamebookPlayIds": [
+        "play-50"
+      ],
+      "externalPlayIds": [
+        "1505"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5157894736842105
+    },
+    {
+      "gamebookPlayIds": [
+        "play-51"
+      ],
+      "externalPlayIds": [
+        "1530"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5455377574370709
+    },
+    {
+      "gamebookPlayIds": [
+        "play-52"
+      ],
+      "externalPlayIds": [
+        "1552"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.98,
+      "marginToNextCandidate": 0.5473684210526314
+    },
+    {
+      "gamebookPlayIds": [
+        "play-53"
+      ],
+      "externalPlayIds": [
+        "1577"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.98,
+      "marginToNextCandidate": 0.41722488038277505
+    },
+    {
+      "gamebookPlayIds": [
+        "play-54"
+      ],
+      "externalPlayIds": [
+        "1618"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9077,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-55"
+      ],
+      "externalPlayIds": [
+        "1676"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9368,
+      "marginToNextCandidate": 0.298843082939547
+    },
+    {
+      "gamebookPlayIds": [
+        "play-56"
+      ],
+      "externalPlayIds": [
+        "1699"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4200956937799043
+    },
+    {
+      "gamebookPlayIds": [
+        "play-57"
+      ],
+      "externalPlayIds": [
+        "1731"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9923,
+      "marginToNextCandidate": 0.4530946133662602
+    },
+    {
+      "gamebookPlayIds": [
+        "play-58"
+      ],
+      "externalPlayIds": [
+        "1761"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.35789473684210527
+    },
+    {
+      "gamebookPlayIds": [
+        "play-59"
+      ],
+      "externalPlayIds": [
+        "1783"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9782,
+      "marginToNextCandidate": 0.4787878787878787
+    },
+    {
+      "gamebookPlayIds": [
+        "play-60"
+      ],
+      "externalPlayIds": [
+        "1805"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3263157894736841
+    },
+    {
+      "gamebookPlayIds": [
+        "play-61"
+      ],
+      "externalPlayIds": [
+        "1830"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.38315789473684214
+    },
+    {
+      "gamebookPlayIds": [
+        "play-62"
+      ],
+      "externalPlayIds": [
+        "1852"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.39833795013850415
+    },
+    {
+      "gamebookPlayIds": [
+        "play-63"
+      ],
+      "externalPlayIds": [
+        "1877"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5894736842105263
+    },
+    {
+      "gamebookPlayIds": [
+        "play-64"
+      ],
+      "externalPlayIds": [
+        "1906"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.976,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-65"
+      ],
+      "externalPlayIds": [
+        "1931"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5490526315789472
+    },
+    {
+      "gamebookPlayIds": [
+        "play-66"
+      ],
+      "externalPlayIds": [
+        "1960"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9867,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-67"
+      ],
+      "externalPlayIds": [
+        "2005"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9815,
+      "marginToNextCandidate": 0.4086369770580296
+    },
+    {
+      "gamebookPlayIds": [
+        "play-68"
+      ],
+      "externalPlayIds": [
+        "2028"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9896,
+      "marginToNextCandidate": 0.5784897025171623
+    },
+    {
+      "gamebookPlayIds": [
+        "play-69"
+      ],
+      "externalPlayIds": [
+        "2079"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.8971,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-70"
+      ],
+      "externalPlayIds": [
+        "2173"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.38315789473684203
+    },
+    {
+      "gamebookPlayIds": [
+        "play-71"
+      ],
+      "externalPlayIds": [
+        "2196"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-72"
+      ],
+      "externalPlayIds": [
+        "2226"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9944,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-73"
+      ],
+      "externalPlayIds": [
+        "2264"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5894736842105261
+    },
+    {
+      "gamebookPlayIds": [
+        "play-74"
+      ],
+      "externalPlayIds": [
+        "2287"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9153,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-75"
+      ],
+      "externalPlayIds": [
+        "2365"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.39504643962848285
+    },
+    {
+      "gamebookPlayIds": [
+        "play-76"
+      ],
+      "externalPlayIds": [
+        "2387"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.43368421052631567
+    },
+    {
+      "gamebookPlayIds": [
+        "play-77"
+      ],
+      "externalPlayIds": [
+        "2409"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.43157894736842095
+    },
+    {
+      "gamebookPlayIds": [
+        "play-78"
+      ],
+      "externalPlayIds": [
+        "2431"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4842105263157894
+    },
+    {
+      "gamebookPlayIds": [
+        "play-79"
+      ],
+      "externalPlayIds": [
+        "2455"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3894736842105262
+    },
+    {
+      "gamebookPlayIds": [
+        "play-80"
+      ],
+      "externalPlayIds": [
+        "2480"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-81"
+      ],
+      "externalPlayIds": [
+        "2502"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.38315789473684214
+    },
+    {
+      "gamebookPlayIds": [
+        "play-82"
+      ],
+      "externalPlayIds": [
+        "2524"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.43102493074792236
+    },
+    {
+      "gamebookPlayIds": [
+        "play-83"
+      ],
+      "externalPlayIds": [
+        "2546"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5091412742382271
+    },
+    {
+      "gamebookPlayIds": [
+        "play-84"
+      ],
+      "externalPlayIds": [
+        "2578"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5333333333333332
+    },
+    {
+      "gamebookPlayIds": [
+        "play-85"
+      ],
+      "externalPlayIds": [
+        "2600"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5228070175438596
+    },
+    {
+      "gamebookPlayIds": [
+        "play-86"
+      ],
+      "externalPlayIds": [
+        "2625"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5353383458646616
+    },
+    {
+      "gamebookPlayIds": [
+        "play-87"
+      ],
+      "externalPlayIds": [
+        "2652"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9867,
+      "marginToNextCandidate": 0.4078272604588393
+    },
+    {
+      "gamebookPlayIds": [
+        "play-88"
+      ],
+      "externalPlayIds": [
+        "2683"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-89"
+      ],
+      "externalPlayIds": [
+        "2705"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.39504643962848296
+    },
+    {
+      "gamebookPlayIds": [
+        "play-90"
+      ],
+      "externalPlayIds": [
+        "2725"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5789473684210527
+    },
+    {
+      "gamebookPlayIds": [
+        "play-91"
+      ],
+      "externalPlayIds": [
+        "2748"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.88,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-92"
+      ],
+      "externalPlayIds": [
+        "2819"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4280701754385965
+    },
+    {
+      "gamebookPlayIds": [
+        "play-93"
+      ],
+      "externalPlayIds": [
+        "2853"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4200956937799043
+    },
+    {
+      "gamebookPlayIds": [
+        "play-94"
+      ],
+      "externalPlayIds": [
+        "2876"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.976,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-95"
+      ],
+      "externalPlayIds": [
+        "2903"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4736842105263158
+    },
+    {
+      "gamebookPlayIds": [
+        "play-96"
+      ],
+      "externalPlayIds": [
+        "2928"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.88,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-97"
+      ],
+      "externalPlayIds": [
+        "2988"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.976,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-98"
+      ],
+      "externalPlayIds": [
+        "3026"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.984,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-99"
+      ],
+      "externalPlayIds": [
+        "3059"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-100"
+      ],
+      "externalPlayIds": [
+        "3079"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-101"
+      ],
+      "externalPlayIds": [
+        "3101"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-102"
+      ],
+      "externalPlayIds": [
+        "3121"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9782,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-103"
+      ],
+      "externalPlayIds": [
+        "3170"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.92,
+      "marginToNextCandidate": 0.34681440443213285
+    },
+    {
+      "gamebookPlayIds": [
+        "play-104"
+      ],
+      "externalPlayIds": [
+        "3196"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-105"
+      ],
+      "externalPlayIds": [
+        "3246",
+        "3269"
+      ],
+      "status": "matched",
+      "relationship": "1:many",
+      "confidence": 0.8593,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-106"
+      ],
+      "externalPlayIds": [
+        "3314"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.38315789473684214
+    },
+    {
+      "gamebookPlayIds": [
+        "play-107"
+      ],
+      "externalPlayIds": [
+        "3336"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.43157894736842095
+    },
+    {
+      "gamebookPlayIds": [
+        "play-108"
+      ],
+      "externalPlayIds": [
+        "3361"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3481781376518218
+    },
+    {
+      "gamebookPlayIds": [
+        "play-109"
+      ],
+      "externalPlayIds": [
+        "3385"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.39504643962848296
+    },
+    {
+      "gamebookPlayIds": [
+        "play-110"
+      ],
+      "externalPlayIds": [
+        "3412"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3464114832535885
+    },
+    {
+      "gamebookPlayIds": [
+        "play-111"
+      ],
+      "externalPlayIds": [
+        "3435"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4041189931350113
+    },
+    {
+      "gamebookPlayIds": [
+        "play-112"
+      ],
+      "externalPlayIds": [
+        "3466"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.35789473684210527
+    },
+    {
+      "gamebookPlayIds": [
+        "play-113"
+      ],
+      "externalPlayIds": [
+        "3498"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4093567251461988
+    },
+    {
+      "gamebookPlayIds": [
+        "play-114"
+      ],
+      "externalPlayIds": [
+        "3530"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4
+    },
+    {
+      "gamebookPlayIds": [
+        "play-115"
+      ],
+      "externalPlayIds": [
+        "3550"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3999999999999999
+    },
+    {
+      "gamebookPlayIds": [
+        "play-116"
+      ],
+      "externalPlayIds": [
+        "3572"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4496240601503758
+    },
+    {
+      "gamebookPlayIds": [
+        "play-117"
+      ],
+      "externalPlayIds": [
+        "3602"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.408421052631579
+    },
+    {
+      "gamebookPlayIds": [
+        "play-118"
+      ],
+      "externalPlayIds": [
+        "3624"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.42315789473684207
+    },
+    {
+      "gamebookPlayIds": [
+        "play-119"
+      ],
+      "externalPlayIds": [
+        "3646"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.37416267942583725
+    },
+    {
+      "gamebookPlayIds": [
+        "play-120"
+      ],
+      "externalPlayIds": [
+        "3669"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9077,
+      "marginToNextCandidate": 0.32469635627530347
+    },
+    {
+      "gamebookPlayIds": [
+        "play-121"
+      ],
+      "externalPlayIds": [
+        "3726"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.35789473684210527
+    },
+    {
+      "gamebookPlayIds": [
+        "play-122"
+      ],
+      "externalPlayIds": [
+        "3751"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-123"
+      ],
+      "externalPlayIds": [
+        "3773"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4135338345864661
+    },
+    {
+      "gamebookPlayIds": [
+        "play-124"
+      ],
+      "externalPlayIds": [
+        "3796"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-125"
+      ],
+      "externalPlayIds": [
+        "3815"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.41052631578947363
+    },
+    {
+      "gamebookPlayIds": [
+        "play-126"
+      ],
+      "externalPlayIds": [
+        "3844"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4526315789473684
+    },
+    {
+      "gamebookPlayIds": [
+        "play-127"
+      ],
+      "externalPlayIds": [
+        "3866"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5157894736842105
+    },
+    {
+      "gamebookPlayIds": [
+        "play-128"
+      ],
+      "externalPlayIds": [
+        "3886"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-129"
+      ],
+      "externalPlayIds": [
+        "3917"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.42105263157894735
+    },
+    {
+      "gamebookPlayIds": [
+        "play-130"
+      ],
+      "externalPlayIds": [
+        "3939"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.323444976076555
+    },
+    {
+      "gamebookPlayIds": [
+        "play-131"
+      ],
+      "externalPlayIds": [
+        "3969"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.35789473684210515
+    },
+    {
+      "gamebookPlayIds": [
+        "play-132"
+      ],
+      "externalPlayIds": [
+        "3992"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.40928792569659433
+    },
+    {
+      "gamebookPlayIds": [
+        "play-133"
+      ],
+      "externalPlayIds": [
+        "4017"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5533834586466165
+    },
+    {
+      "gamebookPlayIds": [
+        "play-134"
+      ],
+      "externalPlayIds": [
+        "4046"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3287449392712549
+    },
+    {
+      "gamebookPlayIds": [
+        "play-135"
+      ],
+      "externalPlayIds": [
+        "4076"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5368421052631578
+    },
+    {
+      "gamebookPlayIds": [
+        "play-136"
+      ],
+      "externalPlayIds": [
+        "4106"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9022,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-137"
+      ],
+      "externalPlayIds": [
+        "4150"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.30375939849624056
+    },
+    {
+      "gamebookPlayIds": [
+        "play-138"
+      ],
+      "externalPlayIds": [
+        "4173"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.43157894736842095
+    },
+    {
+      "gamebookPlayIds": [
+        "play-139"
+      ],
+      "externalPlayIds": [
+        "4196"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9859,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-140"
+      ],
+      "externalPlayIds": [
+        "4238"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4280701754385965
+    },
+    {
+      "gamebookPlayIds": [
+        "play-141"
+      ],
+      "externalPlayIds": [
+        "4265"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-142"
+      ],
+      "externalPlayIds": [
+        "4287"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4631578947368421
+    },
+    {
+      "gamebookPlayIds": [
+        "play-143"
+      ],
+      "externalPlayIds": [
+        "4312"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.37416267942583725
+    },
+    {
+      "gamebookPlayIds": [
+        "play-144"
+      ],
+      "externalPlayIds": [
+        "4335"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-145"
+      ],
+      "externalPlayIds": [
+        "4357"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-146"
+      ],
+      "externalPlayIds": [
+        "4379"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.30047846889952134
+    },
+    {
+      "gamebookPlayIds": [
+        "play-147"
+      ],
+      "externalPlayIds": [
+        "4409"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5894736842105261
+    },
+    {
+      "gamebookPlayIds": [
+        "play-148"
+      ],
+      "externalPlayIds": [
+        "4432"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.8924,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-149"
+      ],
+      "externalPlayIds": [
+        "4475"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.904,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-150"
+      ],
+      "externalPlayIds": [
+        "4540"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.976,
+      "marginToNextCandidate": 0.3930434782608696
+    },
+    {
+      "gamebookPlayIds": [
+        "play-151"
+      ],
+      "externalPlayIds": [
+        "4567"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.30931174089068825
+    },
+    {
+      "gamebookPlayIds": [
+        "play-152"
+      ],
+      "externalPlayIds": [
+        "4591"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-153"
+      ],
+      "externalPlayIds": [
+        "4615"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-154"
+      ],
+      "externalPlayIds": [
+        "4640"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-155"
+      ],
+      "externalPlayIds": [
+        "4667"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9077,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-156"
+      ],
+      "externalPlayIds": [
+        "4717"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.4526315789473684
+    },
+    {
+      "gamebookPlayIds": [
+        "play-157"
+      ],
+      "externalPlayIds": [
+        "4739"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.48663967611336023
+    },
+    {
+      "gamebookPlayIds": [
+        "play-158"
+      ],
+      "externalPlayIds": [
+        "4762"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9874,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-159"
+      ],
+      "externalPlayIds": [
+        "4795"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.48254847645429355
+    },
+    {
+      "gamebookPlayIds": [
+        "play-160"
+      ],
+      "externalPlayIds": [
+        "4820"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5333333333333332
+    },
+    {
+      "gamebookPlayIds": [
+        "play-161"
+      ],
+      "externalPlayIds": [
+        "4842"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.37192982456140344
+    },
+    {
+      "gamebookPlayIds": [
+        "play-162"
+      ],
+      "externalPlayIds": [
+        "4867"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.5894736842105261
+    },
+    {
+      "gamebookPlayIds": [
+        "play-163"
+      ],
+      "externalPlayIds": [
+        "4890"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 0.9782,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-164"
+      ],
+      "externalPlayIds": [
+        "4921"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 0.3639097744360902
+    },
+    {
+      "gamebookPlayIds": [
+        "play-165"
+      ],
+      "externalPlayIds": [
+        "4946"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    },
+    {
+      "gamebookPlayIds": [
+        "play-166"
+      ],
+      "externalPlayIds": [
+        "4981"
+      ],
+      "status": "matched",
+      "relationship": "1:1",
+      "confidence": 1,
+      "marginToNextCandidate": 1
+    }
+  ]
+}

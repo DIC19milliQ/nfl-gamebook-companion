@@ -1,0 +1,8 @@
+[
+  { "id": "2025_09_CHI_CIN", "slug": "bears-at-bengals-2025-reg-9", "round": "Week 9", "reason": "Replay reversals, blocked field goal, turnovers, kickoff penalties, and high scoring." },
+  { "id": "2025_04_PHI_TB", "slug": "eagles-at-buccaneers-2025-reg-4", "round": "Week 4", "reason": "Blocked punt, safety, replay, turnovers, and kickoff penalties." },
+  { "id": "2025_14_PHI_LAC", "slug": "eagles-at-chargers-2025-reg-14", "round": "Week 14", "reason": "Overtime, repeated interceptions/returns, lost fumbles/returns, and kick-heavy scoring." },
+  { "id": "2025_05_TEN_ARI", "slug": "titans-at-cardinals-2025-reg-5", "round": "Week 5", "reason": "Four lost fumbles, replay reversals, offsetting penalty, and kickoff penalties." },
+  { "id": "2025_06_DET_KC", "slug": "lions-at-chiefs-2025-reg-6", "round": "Week 6", "reason": "Ordinary control with no flagged turnover, replay, blocked kick, safety, offsetting, or kickoff penalty." },
+  { "id": "2025_06_SEA_JAX", "slug": "seahawks-at-jaguars-2025-reg-6", "round": "Week 6", "reason": "Ordinary control with high punt volume and only one kickoff penalty among targeted rare events." }
+]

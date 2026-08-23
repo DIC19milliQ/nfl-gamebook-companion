@@ -1,0 +1,92 @@
+{
+  "auditedAt": "2026-08-23T15:40:00.000Z",
+  "method": {
+    "allAlignmentsScreened": 900,
+    "matchedScreened": 899,
+    "screen": "Selected primary row must be monotonic and normally share normalized clock with the Gamebook Play and have description Dice similarity >= 0.35. All exceptions were reviewed from both raw descriptions.",
+    "screenExceptionsReviewed": 4,
+    "lowConfidenceUnder085Reviewed": 10,
+    "sameClockAlternativeCasesReviewed": 1,
+    "oneToManyReviewed": 30,
+    "manyToOneReviewed": 0,
+    "turnoverAlignmentsReviewed": 15,
+    "scoringAlignmentsRuleChecked": 61,
+    "penaltyNoPlayAlignmentsRuleChecked": 74,
+    "replayAlignmentsReviewed": 13,
+    "blockedKickAlignmentsReviewed": 2,
+    "safetyAlignmentsReviewed": 1,
+    "overtimeAlignmentsReviewed": 17
+  },
+  "falseMatches": [],
+  "gamebookIssues": [
+    {
+      "gameId": "2025_05_TEN_ARI",
+      "gamebookPlayId": "play-123",
+      "status": "ambiguous",
+      "confidence": 0.7385,
+      "classification": [
+        "Gamebook / nflverse play granularity difference",
+        "source description difference"
+      ],
+      "selectedExternalPlayIds": ["3876", "3899", "3914"],
+      "correctExternalPlayIds": ["3876", "3899", "3914"],
+      "finding": "The alignment is substantively correct (Pollard TD, missed PAT, kickoff penalty), but the Gamebook combines all components and an injury update. ARZ versus nflverse ARI also removes yard-line/possession evidence, leaving confidence below 0.75. It is not counted as a false match because ambiguous is excluded from matched coverage."
+    }
+  ],
+  "parserIssues": [
+    {
+      "code": "no-play-boolean-false",
+      "count": 13,
+      "finding": "Thirteen Gamebook descriptions contain 'No Play' while parsed noPlay remains false. They still aligned correctly."
+    },
+    {
+      "code": "opening-kickoff-touchdown-omitted",
+      "count": 1,
+      "finding": "CHI @ CIN opening kickoff return touchdown (nflverse 39) and its PAT (63) produce no Gamebook Play, so neither can be referenced."
+    },
+    {
+      "code": "blocked-punt-pat-omitted",
+      "count": 1,
+      "finding": "PHI @ TB blocked-punt return TD is a Gamebook Play, but the following PAT row (nflverse 211) is not attached to its description and remains external-only."
+    },
+    {
+      "code": "conversion-and-penalty-merged",
+      "count": 4,
+      "finding": "Three two-point conversion rows and one scoring-continuation no-play row are embedded in preceding Gamebook scoring descriptions but are not separately referenced."
+    },
+    {
+      "code": "standalone-kickoff-omitted",
+      "count": 63,
+      "finding": "Standalone kickoffs generally do not become Gamebook Plays; six kickoff-penalty rows attach through existing 1:many behavior and one kickoff penalty remains external-only."
+    },
+    {
+      "code": "administrative-rows-omitted",
+      "count": 84,
+      "finding": "Fifty-three timeout rows and thirty-one quarter/game markers have no Gamebook Play, as expected from parser granularity."
+    }
+  ],
+  "closestRiskExamples": [
+    {
+      "gameId": "2025_05_TEN_ARI",
+      "gamebookPlayId": "play-20",
+      "externalPlayId": "656",
+      "confidence": 0.7659,
+      "finding": "Correct Spears run despite Gamebook 5:49 versus nflverse 5:50 and ARZ versus ARI."
+    },
+    {
+      "gameId": "2025_06_SEA_JAX",
+      "gamebookPlayId": "play-114",
+      "externalPlayId": "3361",
+      "alternativeExternalPlayId": "3337",
+      "confidence": 1,
+      "finding": "Only same-clock alternative case. The selected Walker run is exact; the alternative is the preceding kickoff and trails by a 0.2421 confidence margin."
+    },
+    {
+      "gameId": "2025_04_PHI_TB",
+      "gamebookPlayId": "play-147",
+      "externalPlayId": "4548",
+      "confidence": 0.8458,
+      "finding": "Correct end-zone safety; low confidence comes from sparse/missing state fields rather than a competing row."
+    }
+  ]
+}

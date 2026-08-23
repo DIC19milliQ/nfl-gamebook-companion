@@ -26,6 +26,19 @@ npm run research:check
 
 The run writes the compact, single-game research artifact and Markdown report to `research/results/`. The committed JSON is also the real-game regression fixture; the 18 MB season PBP and PDF remain ignored.
 
+## Phase 3 multi-game blind validation
+
+The frozen six-game manifest is `phase-3-games.json`; selection evidence recorded before the first alignment run is in `phase-3-validation-set.md`. Put each Center metadata response and Gamebook PDF in ignored `research/cache/` using the manifest slug as the filename, together with `games.csv` and `play_by_play_2025.csv.gz`, then run:
+
+```powershell
+npm run research:batch
+npm run research:finalize
+```
+
+`research:batch` writes full, review-oriented artifacts to ignored `research/output/phase-3/` and continues after an individual game failure. `research:finalize` requires the frozen matcher version and SHA-256, then writes compact per-game JSON/Markdown and the audited aggregate report to `research/results/phase-3/`. The committed compact JSON keeps identity/source hashes, metrics, unmatched-row classifications, and an alignment ledger without committing PDFs or the season PBP.
+
+Phase 3 did not change `matcher.ts` or the production parser. Its matcher SHA-256 remained `5d09bee7bf4009783f2d85660aa459bb0a34b3f8184ebcb43285b800539dc2e4` throughout evaluation.
+
 ## Source and DTO boundary
 
 - Official distribution: [nflverse-data](https://github.com/nflverse/nflverse-data) release assets.
