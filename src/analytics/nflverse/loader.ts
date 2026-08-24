@@ -1,12 +1,20 @@
 import type { NflversePlay } from "./types";
 
 export const CENTER_PBP_ENDPOINT = "https://spoiler-free-nfl-gamebooks.dic19.chatgpt.site/api/companion/pbp";
+export const CENTER_PBP_REQUEST_ENDPOINT = `${CENTER_PBP_ENDPOINT}/request`;
 export const MAX_PBP_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 const GAME_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
 type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+export class NflverseNotReadyError extends Error {
+  constructor() {
+    super("nflverse analytics are being prepared.");
+    this.name = "NflverseNotReadyError";
+  }
+}
 
 export interface NflverseProvenance {
   datasetVersion: string;
@@ -107,16 +115,45 @@ async function sha256(value: string) {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function fetchNflversePbp(gameId: string, options: { fetcher?: Fetcher } = {}): Promise<NflverseGamePayload> {
+function validateGameId(gameId: string) {
   if (gameId.length > 120 || !GAME_ID_PATTERN.test(gameId)) throw new Error("The link contains an invalid NFL game ID.");
+}
+
+export async function requestNflversePbp(gameId: string, options: { fetcher?: Fetcher; signal?: AbortSignal } = {}) {
+  validateGameId(gameId);
+  let response: Response;
+  try {
+    response = await (options.fetcher ?? fetch)(CENTER_PBP_REQUEST_ENDPOINT, {
+      method: "POST",
+      cache: "no-store",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ game: gameId }),
+      signal: options.signal,
+    });
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
+    throw new Error("nflverse analytics could not be requested.");
+  }
+  if (response.status !== 200 && response.status !== 202) throw new Error("nflverse analytics could not be requested.");
+  const parsed = await response.json().catch(() => null) as { status?: unknown; game?: unknown } | null;
+  if (!parsed || parsed.game !== gameId || (parsed.status !== "ready" && parsed.status !== "preparing")) {
+    throw new Error("nflverse analytics request returned an invalid response.");
+  }
+  return parsed.status;
+}
+
+export async function fetchNflversePbp(gameId: string, options: { fetcher?: Fetcher; signal?: AbortSignal } = {}): Promise<NflverseGamePayload> {
+  validateGameId(gameId);
   const url = new URL(CENTER_PBP_ENDPOINT);
   url.searchParams.set("game", gameId);
   let response: Response;
   try {
-    response = await (options.fetcher ?? fetch)(url, { cache: "no-store", headers: { Accept: "application/json" } });
-  } catch {
+    response = await (options.fetcher ?? fetch)(url, { cache: "no-store", headers: { Accept: "application/json" }, signal: options.signal });
+  } catch (error) {
+    if (options.signal?.aborted) throw error;
     throw new Error("nflverse analytics are unavailable.");
   }
+  if (response.status === 404) throw new NflverseNotReadyError();
   if (!response.ok) throw new Error("nflverse analytics are unavailable.");
   const contentType = response.headers.get("Content-Type")?.toLowerCase() ?? "";
   if (!contentType.startsWith("application/json")) throw new Error("nflverse analytics returned an invalid response.");

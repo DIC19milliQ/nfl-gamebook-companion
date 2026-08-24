@@ -26,9 +26,14 @@ describe("per-play EPA presentation", () => {
     expect(styles).toMatch(/@media \(max-width: 760px\)[\s\S]*\.play-result-primary/);
   });
 
-  it("clears optional analytics for manual PDF loads and suppresses fetch failure", async () => {
+  it("defaults analytics off, makes no PBP request on Gamebook load, and clears it per game", async () => {
     const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+    const autoLoad = app.slice(app.indexOf("if (!autoGameId || autoLoadStarted.current)"), app.indexOf("}, [autoGameId, loadBytes]);"));
+    expect(app).toMatch(/useState\(false\).*advancedAnalytics|\[advancedAnalytics, setAdvancedAnalytics\] = useState\(false\)/);
+    expect(autoLoad).not.toMatch(/fetchNflversePbp|requestNflversePbp/);
     expect(app).toMatch(/if \(!automatic\) \{ setRemoteGameId\(""\); setNflversePayload\(null\); \}/);
-    expect(app).toMatch(/fetchNflversePbp\(autoGameId\)\.then\(setNflversePayload\)\.catch\(\(\) => setNflversePayload\(null\)\)/);
+    expect(app).toMatch(/if \(!advancedAnalytics \|\| !remoteGameId\)/);
+    expect(app).toMatch(/setAdvancedAnalytics\(false\)/);
+    expect(app).toMatch(/AdvancedAnalyticsControl/);
   });
 });

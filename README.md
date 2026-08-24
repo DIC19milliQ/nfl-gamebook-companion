@@ -2,7 +2,7 @@
 
 NFL公式Gamebook PDFを、見逃し配信向けの第二画面、1プレーずつ進むリプレー、試合後のデータ探索画面へ変換するローカルファーストWebアプリです。
 
-外部のNFLデータAPIやLLM APIは使いません。PDFはブラウザ内のPDF.jsで解析され、端末外へ送信されません。
+PDFはブラウザ内のPDF.jsで解析され、端末外へ送信されません。通常利用はGamebookだけで動作し、外部analytics通信は行いません。Centerから開いた試合でユーザーが明示的にAdvanced AnalyticsをONにした場合だけ、Centerの一時cacheからnflverse PBP/EPAを取得します。LLM APIは使いません。
 
 ## 3つの体験
 
@@ -63,7 +63,9 @@ Gamebook PDF
   → React UI（WATCH ALONG / GAMEBOOK REPLAY / EXPLORE）
 ```
 
-- **クライアント完結**: サーバー処理や外部APIが不要な静的SPAです。
+Advanced Analyticsは試合ごとに既定OFFです。ON時だけCenterへcache確認と需要登録を行い、未準備の場合は上限付きbackoffで再確認します。OFFへ戻すとEPAを含むanalytics表示を消し、新しい通信を停止します。matcherは`research-0.1.0`、confidence 0.75以上の安全な1:1/1:many primary rowだけへEPAを付与します。
+
+- **Gamebookはクライアント完結**: PDF解析と通常の3体験にサーバー処理や外部analytics APIは不要です。
 - **対称な左右表抽出**: ページ幅の中央でVisitor/Home領域を作り、同一の解析関数を両側へ適用します。Snap列は固定offsetではなく、`Offense / Defense / Special Teams` 見出しの実座標を列アンカーとして使います。
 - **baseline許容付き行復元**: PDF.jsがフォントごとに保持する約0.75ptのbaseline差を、実際の行間より十分小さい1pt許容で同じ表行へ復元します。
 - **見出しベースのセクション検出**: ページ番号ではなく `Final Team Statistics`、`Ball Possession And Drive Chart`、`Play By Play` などの見出しで対象を探します。
