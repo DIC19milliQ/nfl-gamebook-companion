@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { CENTER_PBP_ENDPOINT, fetchNflversePbp, validateCenterPbpDto } from "../src/analytics/nflverse/loader";
+import { CENTER_PBP_ENDPOINT, CENTER_PBP_REQUEST_ENDPOINT, fetchNflversePbp, requestNflversePbp, validateCenterPbpDto } from "../src/analytics/nflverse/loader";
 
 const centerGameId = "cowboys-at-eagles-2025-reg-1";
 const nflverseGameId = "2025_01_DAL_PHI";
@@ -45,12 +45,22 @@ describe("Center nflverse PBP loader", () => {
     expect(result.plays[0].epa).toBeUndefined();
   });
 
-  it("treats unavailable, invalid DTO, and payload tampering as optional failures", async () => {
-    await expect(fetchNflversePbp(centerGameId, { fetcher: vi.fn().mockResolvedValue(jsonResponse({ error: "PBP_NOT_READY" }, 404)) })).rejects.toThrow("unavailable");
+  it("distinguishes a cache miss from invalid DTO and payload tampering", async () => {
+    await expect(fetchNflversePbp(centerGameId, { fetcher: vi.fn().mockResolvedValue(jsonResponse({ error: "PBP_NOT_READY" }, 404)) })).rejects.toThrow("being prepared");
     expect(validateCenterPbpDto({ ...dto(), centerGameId: "another-game" }, centerGameId)).toBeNull();
     const tampered = dto();
     tampered.plays[0].description = "changed after hashing";
     await expect(fetchNflversePbp(centerGameId, { fetcher: vi.fn().mockResolvedValue(jsonResponse(tampered)) })).rejects.toThrow("integrity");
+  });
+
+  it("registers demand only through the bounded JSON request endpoint", async () => {
+    const fetcher = vi.fn().mockResolvedValue(jsonResponse({ status: "preparing", game: centerGameId }, 202));
+    await expect(requestNflversePbp(centerGameId, { fetcher })).resolves.toBe("preparing");
+    expect(fetcher).toHaveBeenCalledWith(CENTER_PBP_REQUEST_ENDPOINT, expect.objectContaining({
+      method: "POST",
+      cache: "no-store",
+      body: JSON.stringify({ game: centerGameId }),
+    }));
   });
 
   it("rejects invalid game IDs before making a request", async () => {

@@ -122,6 +122,20 @@ button { cursor: pointer; }
 .mode-nav button small { display: none; }
 .mode-nav button.active { color: var(--text); background: #0d1b15; }
 .mode-nav button.active::after { content: ""; position: absolute; height: 3px; background: var(--green); left: 30px; right: 30px; bottom: -1px; }
+.analytics-control { min-height: 42px; border-bottom: 1px solid var(--line); background: #0a1510; display: flex; align-items: center; justify-content: center; gap: 20px; padding: 6px 20px; }
+.analytics-control > div { min-width: 280px; display: flex; flex-direction: column; gap: 2px; }
+.analytics-control > div b { color: #b5c4bc; font-size: 8px; letter-spacing: .14em; }
+.analytics-control > div span { color: var(--muted); font-size: 8px; }
+.analytics-control.on > div b { color: var(--green); }
+.analytics-control button { width: 72px; height: 28px; border: 1px solid #42564c; background: #0d1b15; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 7px; }
+.analytics-control button span { color: var(--muted); font-size: 7px; font-weight: 950; letter-spacing: .1em; }
+.analytics-control button i { width: 24px; height: 13px; border: 1px solid #4b5e54; position: relative; }
+.analytics-control button i::after { content: ""; position: absolute; width: 7px; height: 7px; top: 2px; left: 3px; background: #718178; transition: transform .2s; }
+.analytics-control.on button { border-color: #4e7c60; }
+.analytics-control.on button span { color: var(--green); }
+.analytics-control.on button i { border-color: var(--green); }
+.analytics-control.on button i::after { background: var(--green); transform: translateX(10px); }
+.analytics-control button:disabled { cursor: not-allowed; opacity: .45; }
 .app-main { max-width: 1320px; margin: 0 auto; min-height: 650px; padding: 14px 24px 64px; }
 .app-footer { border-top: 1px solid var(--line); color: #65776d; font-size: 9px; letter-spacing: .08em; padding: 20px 32px; display: flex; justify-content: space-between; }
 .warning-banner { background: #3b2810; border: 1px solid #745322; color: #ffd78a; padding: 12px 16px; margin-bottom: 24px; font-size: 12px; }
@@ -681,6 +695,9 @@ button { cursor: pointer; }
   .mode-nav button b { font-size: 6px; line-height: 1.05; }
   .mode-nav button small { display: none; }
   .mode-nav button.active::after { left: 20%; right: 20%; bottom: auto; top: 0; }
+  .analytics-control { justify-content: space-between; gap: 12px; padding: 7px 12px; }
+  .analytics-control > div { min-width: 0; }
+  .analytics-control > div span { max-width: 230px; }
   .app-main { padding: 10px 10px 92px; }
   .app-footer { display: none; }
   .section-heading h2 { font-size: 38px; }

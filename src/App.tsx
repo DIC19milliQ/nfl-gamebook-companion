@@ -5,13 +5,14 @@ import { renderPlayDescription, renderPlaySections, type DescriptionLanguage } f
 import { driveResultView, fieldView, replayFieldView } from "./field";
 import { planReplayFieldLayout, type ReplayLabelLane } from "./replayLayout";
 import { fetchRemoteGamebook, type RemoteLoadStage } from "./remoteGamebook";
-import { fetchNflversePbp, type NflverseGamePayload } from "./analytics/nflverse/loader";
+import { NflverseNotReadyError, fetchNflversePbp, requestNflversePbp, type NflverseGamePayload } from "./analytics/nflverse/loader";
 import { buildAnalyticsSidecar, type AnalyticsSidecar } from "./analytics/nflverse/sidecar";
 import { formatEpa } from "./analytics/nflverse/format";
 import type { Drive, GameData, Play, PlayParticipant, Player, TeamId } from "./types";
 
 type Mode = "watch" | "replay" | "explore";
 type ExploreTab = "flow" | "drives" | "plays" | "players" | "stats";
+type AnalyticsStatus = "off" | "checking" | "preparing" | "ready" | "unavailable";
 
 const AnalyticsContext = createContext<{ sidecar: AnalyticsSidecar | null; visibleThrough: number | null }>({ sidecar: null, visibleThrough: null });
 
@@ -162,6 +163,24 @@ function ModeNav({ mode, onMode }: { mode: Mode; onMode: (mode: Mode) => void })
       ))}
     </nav>
   );
+}
+
+function AdvancedAnalyticsControl({ enabled, available, status, onToggle }: { enabled: boolean; available: boolean; status: AnalyticsStatus; onToggle: () => void }) {
+  const message = !available
+    ? "Available for games opened from Center"
+    : status === "checking"
+      ? "Checking analytics cache…"
+      : status === "preparing"
+        ? "Preparing analytics…"
+        : status === "ready"
+          ? "nflverse EPA ready"
+          : status === "unavailable"
+            ? "Analytics are being prepared. Try again shortly."
+            : "Load optional nflverse play analytics";
+  return <section className={`analytics-control ${enabled ? "on" : ""}`} aria-live="polite">
+    <div><b>ADVANCED ANALYTICS</b><span>{message}</span></div>
+    <button type="button" role="switch" aria-checked={enabled} disabled={!available} onClick={onToggle}><span>{enabled ? "ON" : "OFF"}</span><i /></button>
+  </section>;
 }
 
 function SituationHeader({ game, play, cursor, controls, showDirection = true }: { game: GameData; play?: Play; cursor: number; controls?: ReactNode; showDirection?: boolean }) {
@@ -544,13 +563,15 @@ export default function App() {
   const [error, setError] = useState("");
   const [playerId, setPlayerId] = useState("");
   const [remoteGameId, setRemoteGameId] = useState("");
+  const [advancedAnalytics, setAdvancedAnalytics] = useState(false);
+  const [analyticsStatus, setAnalyticsStatus] = useState<AnalyticsStatus>("off");
   const [nflversePayload, setNflversePayload] = useState<NflverseGamePayload | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsSidecar | null>(null);
   const autoLoadStarted = useRef(false);
   const [autoGameId] = useState(() => new URLSearchParams(window.location.search).get("game")?.trim() ?? "");
 
   const loadBytes = useCallback(async (bytes: ArrayBuffer, fileName: string, automatic = false) => {
-    setLoading(true); setError(""); setAnalytics(null); setProgress(2); setLoadingLabel("Opening the PDF…");
+    setLoading(true); setError(""); setAdvancedAnalytics(false); setAnalyticsStatus("off"); setAnalytics(null); setProgress(2); setLoadingLabel("Opening the PDF…");
     if (!automatic) { setRemoteGameId(""); setNflversePayload(null); }
     try {
       const parsed = await parseGamebook(bytes, fileName, (current, total) => {
@@ -577,7 +598,6 @@ export default function App() {
     if (!autoGameId || autoLoadStarted.current) return;
     autoLoadStarted.current = true;
     setRemoteGameId(autoGameId);
-    void fetchNflversePbp(autoGameId).then(setNflversePayload).catch(() => setNflversePayload(null));
     setLoading(true); setError(""); setProgress(2); setLoadingLabel("Getting Gamebook information…");
     const onStage = (stage: RemoteLoadStage) => {
       if (stage === "metadata") { setProgress(2); setLoadingLabel("Getting Gamebook information…"); }
@@ -594,7 +614,52 @@ export default function App() {
   }, [autoGameId, loadBytes]);
 
   useEffect(() => {
-    if (!game || !nflversePayload || nflversePayload.centerGameId !== remoteGameId) {
+    if (!advancedAnalytics || !remoteGameId) {
+      setAnalyticsStatus("off");
+      return;
+    }
+    if (nflversePayload?.centerGameId === remoteGameId) {
+      setAnalyticsStatus("ready");
+      return;
+    }
+    const controller = new AbortController();
+    const wait = (milliseconds: number) => new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+    const load = async () => {
+      setAnalyticsStatus("checking");
+      try {
+        try {
+          setNflversePayload(await fetchNflversePbp(remoteGameId, { signal: controller.signal }));
+          return;
+        } catch (cause) {
+          if (!(cause instanceof NflverseNotReadyError)) throw cause;
+        }
+        const requestStatus = await requestNflversePbp(remoteGameId, { signal: controller.signal });
+        if (requestStatus === "ready") {
+          setNflversePayload(await fetchNflversePbp(remoteGameId, { signal: controller.signal }));
+          return;
+        }
+        setAnalyticsStatus("preparing");
+        for (const delay of [3_000, 5_000, 8_000, 13_000, 21_000]) {
+          await wait(delay);
+          if (controller.signal.aborted) return;
+          try {
+            setNflversePayload(await fetchNflversePbp(remoteGameId, { signal: controller.signal }));
+            return;
+          } catch (cause) {
+            if (!(cause instanceof NflverseNotReadyError)) throw cause;
+          }
+        }
+        setAnalyticsStatus("unavailable");
+      } catch {
+        if (!controller.signal.aborted) setAnalyticsStatus("unavailable");
+      }
+    };
+    void load();
+    return () => controller.abort();
+  }, [advancedAnalytics, nflversePayload, remoteGameId]);
+
+  useEffect(() => {
+    if (!advancedAnalytics || !game || !nflversePayload || nflversePayload.centerGameId !== remoteGameId) {
       setAnalytics(null);
       return;
     }
@@ -603,10 +668,10 @@ export default function App() {
     } catch {
       setAnalytics(null);
     }
-  }, [game, nflversePayload, remoteGameId]);
+  }, [advancedAnalytics, game, nflversePayload, remoteGameId]);
 
   const reset = () => {
-    setGame(null); setPlayerId(""); setCursor(-1); setReplaySummary(null); setRemoteGameId(""); setNflversePayload(null); setAnalytics(null); document.title = "Gamebook Companion";
+    setGame(null); setPlayerId(""); setCursor(-1); setReplaySummary(null); setRemoteGameId(""); setAdvancedAnalytics(false); setAnalyticsStatus("off"); setNflversePayload(null); setAnalytics(null); document.title = "Gamebook Companion";
     const url = new URL(window.location.href);
     if (url.searchParams.has("game")) {
       url.searchParams.delete("game");
@@ -664,8 +729,8 @@ export default function App() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [game, mode, safeCursor]);
-  const analyticsContext = useMemo(() => ({ sidecar: analytics, visibleThrough: spoiler ? safeCursor : null }), [analytics, safeCursor, spoiler]);
+  const analyticsContext = useMemo(() => ({ sidecar: advancedAnalytics ? analytics : null, visibleThrough: spoiler ? safeCursor : null }), [advancedAnalytics, analytics, safeCursor, spoiler]);
   if (loading) return <LoadingScreen progress={progress} label={loadingLabel} />;
   if (!game) return <Landing onFile={loadFile} error={error} />;
-  return <AnalyticsContext.Provider value={analyticsContext}><div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No PDF upload or permanent storage</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div></AnalyticsContext.Provider>;
+  return <AnalyticsContext.Provider value={analyticsContext}><div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><AdvancedAnalyticsControl enabled={advancedAnalytics} available={Boolean(remoteGameId)} status={analyticsStatus} onToggle={() => setAdvancedAnalytics((value) => !value)} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No PDF upload or permanent storage</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div></AnalyticsContext.Provider>;
 }
