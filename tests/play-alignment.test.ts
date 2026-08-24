@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { resolveNflverseGame } from "../research/identity";
-import { alignPlays, MATCHED_CONFIDENCE } from "../research/matcher";
-import type { GamebookPlayInput, NflversePlay } from "../research/types";
+import { alignPlays, MATCHED_CONFIDENCE } from "../src/analytics/nflverse/matcher";
+import type { GamebookPlayInput, NflversePlay } from "../src/analytics/nflverse/types";
 
 function gamebook(overrides: Partial<GamebookPlayInput> = {}): GamebookPlayInput {
   return {
