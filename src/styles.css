@@ -178,6 +178,9 @@ button { cursor: pointer; }
 .play-tag.touchdown, .play-tag.field-goal { color: var(--green); border-color: #3b7e50; }
 .play-tag.turnover { color: var(--red); border-color: #743c3b; }
 .play-tag.sack { color: var(--amber); border-color: #6b5a2d; }
+.epa-badge { display: inline-flex; align-items: baseline; gap: 4px; width: max-content; padding: 3px 7px; border: 1px solid #405249; border-radius: 999px; background: #17221c; color: #dce8e1; font-size: 10px; font-weight: 850; line-height: 1; letter-spacing: .03em; white-space: nowrap; }
+.epa-badge b { color: #9db0a6; font-size: 7px; letter-spacing: .12em; }
+.epa-badge.compact { margin-left: auto; padding: 3px 6px; font-size: 9px; }
 .no-play { color: var(--amber); font-size: 7px; margin-left: 7px; letter-spacing: .1em; }
 .player-links { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
 .player-links button { background: #15261d; border: 1px solid #294034; color: #b5c7bd; font-size: 8px; padding: 3px 6px; }
@@ -241,6 +244,7 @@ button { cursor: pointer; }
 .first-down-marker span { position: absolute; top: 3px; left: -12px; padding: 1px 3px; color: #f4d76c; background: #173e27; font-size: 6px; font-weight: 900; }
 .attack-arrow { position: absolute; z-index: 5; top: 42px; color: var(--possession-color); font: 24px Impact, sans-serif; text-shadow: 0 1px 4px #041009; transition: left .3s; }
 .current-play { border-top: 1px solid var(--line); padding: 12px 14px; min-height: 78px; }
+.current-play-labels { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
 .current-play .play-section p { font-size: 14px; line-height: 1.42; font-weight: 650; }
 .current-play.waiting { display: flex; align-items: center; color: var(--muted); }
 .current-play.waiting p { margin: 0; font-weight: 500; }
@@ -416,6 +420,7 @@ button { cursor: pointer; }
 .play-result-primary > span { color: var(--result-accent); font-size: 7px; font-weight: 950; letter-spacing: .14em; }
 .play-result-primary h3 { margin: 0; color: var(--result-accent); font: 25px/1 Impact, sans-serif; letter-spacing: .07em; }
 .play-result-primary small { color: #b9c8c0; font-size: 7px; font-weight: 850; letter-spacing: .1em; }
+.play-result-primary > .epa-badge { color: #dce8e1; letter-spacing: .03em; }
 .play-result-type { min-width: 142px; display: grid; place-content: center end; gap: 3px; padding: 8px 12px; border-left: 1px solid var(--line); text-align: right; }
 .play-result-type b { color: white; font-size: 9px; letter-spacing: .1em; }
 .play-result-type span { color: var(--muted); font-size: 6px; font-weight: 900; letter-spacing: .1em; }
@@ -749,6 +754,7 @@ button { cursor: pointer; }
   .play-result-panel { grid-template-columns: 1fr auto; }
   .play-result-primary { grid-template-columns: 1fr; gap: 3px; padding: 8px 9px; }
   .play-result-primary h3 { font-size: 19px; }
+  .play-result-primary > .epa-badge { margin-top: 4px; }
   .play-result-type { min-width: 105px; padding: 7px 8px; }
   .movement-summary { grid-template-columns: 1fr 1fr; }
   .movement-summary > strong { grid-column: 1 / 3; grid-row: 2; min-height: 42px; border: 1px solid var(--line); border-bottom: 0; order: 3; font-size: 16px; }

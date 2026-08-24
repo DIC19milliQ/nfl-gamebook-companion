@@ -1,0 +1,34 @@
+import { readFile } from "node:fs/promises";
+import { describe, expect, it } from "vitest";
+import { formatEpa } from "../src/analytics/nflverse/format";
+
+describe("per-play EPA presentation", () => {
+  it("formats positive, negative, and true-zero values with an explicit EPA sign", () => {
+    expect(formatEpa(1.24)).toBe("+1.24");
+    expect(formatEpa(-0.31)).toBe("-0.31");
+    expect(formatEpa(0)).toBe("+0.00");
+    expect(formatEpa(Number.NaN)).toBeNull();
+  });
+
+  it("keeps EPA outside Play and gates every badge at the spoiler cursor", async () => {
+    const [app, types, styles] = await Promise.all([
+      readFile(new URL("../src/App.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/types.ts", import.meta.url), "utf8"),
+      readFile(new URL("../src/styles.css", import.meta.url), "utf8"),
+    ]);
+    const playInterface = types.slice(types.indexOf("export interface Play {"), types.indexOf("export interface Drive {"));
+    expect(playInterface).not.toMatch(/\bepa\b/i);
+    expect(app).toMatch(/visibleThrough: spoiler \? safeCursor : null/);
+    expect(app).toMatch(/if \(visibleThrough !== null && play\.index > visibleThrough\) return null/);
+    expect(app).toMatch(/current-play-labels[\s\S]*EpaBadge play=\{current\}/);
+    expect(app).toMatch(/PlayResult game=\{game\} play=\{revealed\}/);
+    expect(styles).toMatch(/\.epa-badge/);
+    expect(styles).toMatch(/@media \(max-width: 760px\)[\s\S]*\.play-result-primary/);
+  });
+
+  it("clears optional analytics for manual PDF loads and suppresses fetch failure", async () => {
+    const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
+    expect(app).toMatch(/if \(!automatic\) \{ setRemoteGameId\(""\); setNflversePayload\(null\); \}/);
+    expect(app).toMatch(/fetchNflversePbp\(autoGameId\)\.then\(setNflversePayload\)\.catch\(\(\) => setNflversePayload\(null\)\)/);
+  });
+});

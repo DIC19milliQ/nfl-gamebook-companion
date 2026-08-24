@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { parseGamebook } from "./parser";
 import { renderPlayDescription, renderPlaySections, type DescriptionLanguage } from "./playDescription";
 import { driveResultView, fieldView, replayFieldView } from "./field";
 import { planReplayFieldLayout, type ReplayLabelLane } from "./replayLayout";
 import { fetchRemoteGamebook, type RemoteLoadStage } from "./remoteGamebook";
+import { fetchNflversePbp, type NflverseGamePayload } from "./analytics/nflverse/loader";
+import { buildAnalyticsSidecar, type AnalyticsSidecar } from "./analytics/nflverse/sidecar";
+import { formatEpa } from "./analytics/nflverse/format";
 import type { Drive, GameData, Play, PlayParticipant, Player, TeamId } from "./types";
 
 type Mode = "watch" | "replay" | "explore";
 type ExploreTab = "flow" | "drives" | "plays" | "players" | "stats";
+
+const AnalyticsContext = createContext<{ sidecar: AnalyticsSidecar | null; visibleThrough: number | null }>({ sidecar: null, visibleThrough: null });
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const clockSeconds = (clock: string) => {
@@ -260,7 +265,7 @@ function Field({ game, play, variant = "situation", scoreUpdate }: { game: GameD
 function PlayResult({ game, play }: { game: GameData; play: Play }) {
   const view = replayFieldView(game, play);
   return <section className={`play-result-panel result-${view.resultState}`} data-result-state={view.resultState} aria-label={`Play result: ${view.resultLabel}`}>
-    <div className="play-result-primary"><span>PLAY RESULT</span><h3>{view.resultLabel}</h3>{view.resultDetail && <small>{view.resultDetail}</small>}</div>
+    <div className="play-result-primary"><span>PLAY RESULT</span><h3>{view.resultLabel}</h3>{view.resultDetail && <small>{view.resultDetail}</small>}<EpaBadge play={play} /></div>
     <div className="play-result-type"><b>{view.visualizationLabel}</b>{view.playDirection && <span>{view.playDirection}</span>}</div>
     {view.phases.length > 0 && <div className="replay-phases" aria-label="Scoring phases">{view.phases.map((phase) => <div key={`${phase.phase}-${phase.label}`} className={`phase-${phase.phase}`}><span>{phase.label}</span><b>{phase.result}</b>{phase.position && <em>→ {phase.position}</em>}</div>)}</div>}
     <div className={`field-spot-key mode-${view.mode}`}><span><i className="key-start" />{view.noMovement ? "OFFICIAL BALL" : view.mode === "field-goal" || view.visualization === "blocked-field-goal" ? "KICK ORIGIN" : "START"} · {view.startPosition ?? "NOT STATED"}</span>{view.possessionChange?.position && <span><i className="key-control" />{view.possessionChange.reason === "interception" ? "INT" : "RECOVERY"} · {view.possessionChange.position} · {view.possessionChange.teamId}</span>}{view.blockedKick?.recoveryPosition && !view.possessionChange?.position && <span><i className="key-control" />RECOVERY · {view.blockedKick.recoveryPosition} · {view.blockedKick.recoveryTeamId}</span>}{view.mode === "movement" && view.actionEndPosition && view.actionEndPosition !== view.displayFinalPosition && !view.possessionChange?.position && <span><i className="key-play-end" />PLAY END · {view.actionEndPosition}</span>}{!view.noMovement && <span><i className="key-official" />{view.mode === "touchdown" ? "SCORING END" : view.mode === "field-goal" ? "KICK TARGET" : "OFFICIAL"} · {view.displayFinalPosition ?? "NOT STATED"}</span>}</div>
@@ -269,6 +274,16 @@ function PlayResult({ game, play }: { game: GameData; play: Play }) {
 
 function PlayTag({ kind }: { kind: Play["kind"] }) {
   return <span className={`play-tag ${kind}`}>{kind.replace("field-goal", "FG").toUpperCase()}</span>;
+}
+
+function EpaBadge({ play, compact = false }: { play: Play; compact?: boolean }) {
+  const { sidecar, visibleThrough } = useContext(AnalyticsContext);
+  if (visibleThrough !== null && play.index > visibleThrough) return null;
+  const analytics = sidecar?.byPlayId.get(play.id);
+  if (!analytics) return null;
+  const value = formatEpa(analytics.epa);
+  if (!value) return null;
+  return <span className={`epa-badge ${compact ? "compact" : ""}`} aria-label={`Expected points added ${value}`}><b>EPA</b> {value}</span>;
 }
 
 function PlayText({ play, language, compact = false }: { play: Play; language: DescriptionLanguage; compact?: boolean }) {
@@ -281,7 +296,7 @@ function PlayRow({ game, play, language, onPlayer }: { game: GameData; play: Pla
     <article className="play-row">
       <div className="play-stamp"><b>{quarterLabel(play.quarter)}</b><span>{play.clock}</span></div>
       <div className="play-down"><b>{downLabel(play)}</b><span>{play.yardLine}</span></div>
-      <div className="play-copy"><div><TeamMark game={game} teamId={play.possession} compact /><PlayTag kind={play.kind} />{play.noPlay && <span className="no-play">NO PLAY</span>}</div><PlayText play={play} language={language} compact />
+      <div className="play-copy"><div><TeamMark game={game} teamId={play.possession} compact /><PlayTag kind={play.kind} />{play.noPlay && <span className="no-play">NO PLAY</span>}<EpaBadge play={play} compact /></div><PlayText play={play} language={language} compact />
         {!!play.playerIds.length && onPlayer && <div className="player-links">{play.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}
       </div>
     </article>
@@ -337,7 +352,7 @@ function WatchView({ game, cursor, spoiler, language, onCursor, onPlayer }: { ga
         <SituationHeader game={game} play={current} cursor={cursor} controls={<Locator game={game} cursor={cursor} onCursor={onCursor} />} />
         <div className="situation-card">
           <Field game={game} play={current} />
-          {current ? <div className="current-play"><PlayTag kind={current.kind} /><PlayText play={current} language={language} /></div> : <div className="current-play waiting"><p>No future play or field position is shown. Use the locator to sync with the video.</p></div>}
+          {current ? <div className="current-play"><div className="current-play-labels"><PlayTag kind={current.kind} /><EpaBadge play={current} /></div><PlayText play={current} language={language} /></div> : <div className="current-play waiting"><p>No future play or field position is shown. Use the locator to sync with the video.</p></div>}
         </div>
         {drive && <div className="drive-ribbon"><div><span>CURRENT DRIVE</span><TeamMark game={game} teamId={drive.teamId} /></div><div><span>START</span><b>{drive.startPosition}</b></div><div><span>SO FAR</span><b>{drive.playIds.filter((id) => game.plays.find((play) => play.id === id)!.index <= cursor).length} plays</b></div><div><span>BOOK RESULT</span><b className={spoiler && cursor < drive.lastPlayIndex ? "redacted" : ""}>{spoiler && cursor < drive.lastPlayIndex ? "HIDDEN" : drive.result}</b></div></div>}
       </section>
@@ -528,11 +543,15 @@ export default function App() {
   const [loadingLabel, setLoadingLabel] = useState("");
   const [error, setError] = useState("");
   const [playerId, setPlayerId] = useState("");
+  const [remoteGameId, setRemoteGameId] = useState("");
+  const [nflversePayload, setNflversePayload] = useState<NflverseGamePayload | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsSidecar | null>(null);
   const autoLoadStarted = useRef(false);
   const [autoGameId] = useState(() => new URLSearchParams(window.location.search).get("game")?.trim() ?? "");
 
   const loadBytes = useCallback(async (bytes: ArrayBuffer, fileName: string, automatic = false) => {
-    setLoading(true); setError(""); setProgress(2); setLoadingLabel("Opening the PDF…");
+    setLoading(true); setError(""); setAnalytics(null); setProgress(2); setLoadingLabel("Opening the PDF…");
+    if (!automatic) { setRemoteGameId(""); setNflversePayload(null); }
     try {
       const parsed = await parseGamebook(bytes, fileName, (current, total) => {
         setProgress(Math.round((current / total) * 90));
@@ -557,6 +576,8 @@ export default function App() {
   useEffect(() => {
     if (!autoGameId || autoLoadStarted.current) return;
     autoLoadStarted.current = true;
+    setRemoteGameId(autoGameId);
+    void fetchNflversePbp(autoGameId).then(setNflversePayload).catch(() => setNflversePayload(null));
     setLoading(true); setError(""); setProgress(2); setLoadingLabel("Getting Gamebook information…");
     const onStage = (stage: RemoteLoadStage) => {
       if (stage === "metadata") { setProgress(2); setLoadingLabel("Getting Gamebook information…"); }
@@ -572,8 +593,20 @@ export default function App() {
       });
   }, [autoGameId, loadBytes]);
 
+  useEffect(() => {
+    if (!game || !nflversePayload || nflversePayload.centerGameId !== remoteGameId) {
+      setAnalytics(null);
+      return;
+    }
+    try {
+      setAnalytics(buildAnalyticsSidecar(game.plays, nflversePayload.plays));
+    } catch {
+      setAnalytics(null);
+    }
+  }, [game, nflversePayload, remoteGameId]);
+
   const reset = () => {
-    setGame(null); setPlayerId(""); setCursor(-1); setReplaySummary(null); document.title = "Gamebook Companion";
+    setGame(null); setPlayerId(""); setCursor(-1); setReplaySummary(null); setRemoteGameId(""); setNflversePayload(null); setAnalytics(null); document.title = "Gamebook Companion";
     const url = new URL(window.location.href);
     if (url.searchParams.has("game")) {
       url.searchParams.delete("game");
@@ -631,7 +664,8 @@ export default function App() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [game, mode, safeCursor]);
+  const analyticsContext = useMemo(() => ({ sidecar: analytics, visibleThrough: spoiler ? safeCursor : null }), [analytics, safeCursor, spoiler]);
   if (loading) return <LoadingScreen progress={progress} label={loadingLabel} />;
   if (!game) return <Landing onFile={loadFile} error={error} />;
-  return <div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No PDF upload or permanent storage</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div>;
+  return <AnalyticsContext.Provider value={analyticsContext}><div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No PDF upload or permanent storage</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div></AnalyticsContext.Provider>;
 }
