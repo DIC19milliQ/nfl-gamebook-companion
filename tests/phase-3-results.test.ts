@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { MATCHER_VERSION } from "../research/matcher";
+import { MATCHER_VERSION } from "../src/analytics/nflverse/matcher";
 
 async function json(path: string) {
   return JSON.parse(await readFile(new URL(path, import.meta.url), "utf8"));
