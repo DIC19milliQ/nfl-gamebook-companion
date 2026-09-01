@@ -75,7 +75,20 @@ export function selectPlayAnalytics(alignments: PlayAlignment[], external: Nflve
     const primary = primaryRef ? byExternalId.get(primaryRef.providerPlayId) : undefined;
     if (!primary) continue;
     const rows = alignment.externalPlayRefs.map((ref) => byExternalId.get(ref.providerPlayId)).filter((play): play is NflversePlay => Boolean(play)).sort((left, right) => left.sourceIndex - right.sourceIndex);
-    const currentWp = [...rows].reverse().find(postProbability);
+    const allRowsPresent = rows.length === alignment.externalPlayRefs.length;
+    const probabilityChainConsistent = allRowsPresent && rows.every((row) => preProbability(row) && postProbability(row))
+      && rows.slice(1).every((row, index) => {
+        const previous = rows[index];
+        return Math.abs(previous.homeWpPost! - row.homeWp!) <= WP_CHAIN_TOLERANCE
+          && Math.abs(previous.awayWpPost! - row.awayWp!) <= WP_CHAIN_TOLERANCE;
+      });
+    // A composite may include administrative attachments (for example a weather
+    // suspension) whose model state is not a trustworthy end-of-Gamebook-play WP.
+    // Use the last row only when the whole mapped chain is complete; otherwise the
+    // primary football row is the conservative, semantically bounded fallback.
+    const currentWp = alignment.relationship === "1:many" && !probabilityChainConsistent
+      ? (postProbability(primary) ? primary : undefined)
+      : [...rows].reverse().find(postProbability);
     const firstWp = rows.find(preProbability);
     const cleanPass = primary.playType === "pass" && primary.flags.passAttempt === true && !primary.flags.noPlay && !primary.flags.penalty;
     const epa = finite(primary.epa) ? primary.epa : undefined;
@@ -84,16 +97,10 @@ export function selectPlayAnalytics(alignments: PlayAlignment[], external: Nflve
 
     let winProbabilityChangeSide: "home" | "away" | undefined;
     let winProbabilityAddedPoints: number | undefined;
-    if (firstWp && currentWp && rows.length === alignment.externalPlayRefs.length
-      && rows.every((row) => preProbability(row) && postProbability(row) && sourceWpaMatches(row))) {
-      const chainConsistent = rows.slice(1).every((row, index) => {
-        const previous = rows[index];
-        return Math.abs(previous.homeWpPost! - row.homeWp!) <= WP_CHAIN_TOLERANCE
-          && Math.abs(previous.awayWpPost! - row.awayWp!) <= WP_CHAIN_TOLERANCE;
-      });
+    if (firstWp && currentWp && probabilityChainConsistent && rows.every(sourceWpaMatches)) {
       const homeChange = currentWp.homeWpPost! - firstWp.homeWp!;
       const awayChange = currentWp.awayWpPost! - firstWp.awayWp!;
-      if (chainConsistent && Math.abs(homeChange + awayChange) <= WP_TOLERANCE) {
+      if (Math.abs(homeChange + awayChange) <= WP_TOLERANCE) {
         if (Math.max(Math.abs(homeChange), Math.abs(awayChange)) < 0.0005) {
           winProbabilityAddedPoints = 0;
         } else {
