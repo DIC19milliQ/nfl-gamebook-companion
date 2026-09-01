@@ -125,6 +125,22 @@ describe("pass travel and win-probability sidecar safety rules", () => {
     expect(selected).toMatchObject({ homeWinProbability: 0.65, awayWinProbability: 0.35, winProbabilityChangeSide: "home" });
     expect(selected?.winProbabilityAddedPoints).toBeCloseTo(15, 8);
   });
+
+  it("falls back to primary post-WP and hides WPA when a composite has administrative rows without post-WP", () => {
+    const composite = alignment({ relationship: "1:many", externalPlayRefs: [
+      { provider: "nflverse", providerGameId: "2025_01_DAL_PHI", providerPlayId: "100" },
+      { provider: "nflverse", providerGameId: "2025_01_DAL_PHI", providerPlayId: "101" },
+      { provider: "nflverse", providerGameId: "2025_01_DAL_PHI", providerPlayId: "102" },
+    ] });
+    const selected = selectPlayAnalytics([composite], [
+      external({ homeWp: 0.67, awayWp: 0.33, homeWpPost: 0.7, awayWpPost: 0.3, wpa: 0.03 }),
+      external({ providerPlayId: "101", sourceIndex: 1, playType: "extra_point", homeWp: 0.7, awayWp: 0.3, homeWpPost: 0.9999, awayWpPost: 0.0001, wpa: 0.2999 }),
+      external({ providerPlayId: "102", sourceIndex: 2, playType: undefined, homeWp: 0.9999, awayWp: 0.0001, homeWpPost: undefined, awayWpPost: undefined, wpa: 0 }),
+    ]).get("gb-1");
+    expect(selected).toMatchObject({ homeWinProbability: 0.7, awayWinProbability: 0.3 });
+    expect(selected?.winProbabilityAddedPoints).toBeUndefined();
+    expect(selected?.winProbabilityChangeSide).toBeUndefined();
+  });
 });
 
 describe("real 2025 Week 1 DAL @ PHI sidecar regression", () => {
