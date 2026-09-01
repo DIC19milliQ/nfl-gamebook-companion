@@ -45,11 +45,18 @@ interface CenterPlayDto {
   description: string | null;
   sequence: number;
   epa: number | null;
+  airYards?: number | null;
+  yardsAfterCatch?: number | null;
+  homeWp?: number | null;
+  awayWp?: number | null;
+  homeWpPost?: number | null;
+  awayWpPost?: number | null;
+  wpa?: number | null;
   flags: NflversePlay["flags"];
 }
 
 interface CenterPbpDto {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   centerGameId: string;
   nflverseGameId: string;
   provenance: NflverseProvenance;
@@ -68,6 +75,10 @@ function nullableNumber(value: unknown) {
   return value === null || (typeof value === "number" && Number.isFinite(value));
 }
 
+function optionalNullableNumber(value: unknown) {
+  return value === undefined || nullableNumber(value);
+}
+
 function validTimestamp(value: unknown) {
   return typeof value === "string" && value.length <= 64 && Number.isFinite(Date.parse(value));
 }
@@ -76,11 +87,12 @@ const FLAG_KEYS: (keyof NflversePlay["flags"])[] = [
   "noPlay", "penalty", "touchdown", "interception", "fumbleLost",
   "kickoff", "punt", "fieldGoal", "extraPoint", "timeout",
 ];
+const OPTIONAL_FLAG_KEYS: (keyof NflversePlay["flags"])[] = ["passAttempt", "completePass"];
 
 export function validateCenterPbpDto(value: unknown, requestedGameId: string): CenterPbpDto | null {
   const dto = record(value);
   const provenance = record(dto?.provenance);
-  if (!dto || dto.schemaVersion !== 1 || dto.centerGameId !== requestedGameId) return null;
+  if (!dto || (dto.schemaVersion !== 1 && dto.schemaVersion !== 2) || dto.centerGameId !== requestedGameId) return null;
   if (typeof dto.nflverseGameId !== "string" || dto.nflverseGameId.length > 80) return null;
   if (!provenance
     || typeof provenance.datasetVersion !== "string" || !provenance.datasetVersion || provenance.datasetVersion.length > 300
@@ -104,7 +116,12 @@ export function validateCenterPbpDto(value: unknown, requestedGameId: string): C
       || !nullableString(play.description, 12_000)
       || !Number.isInteger(play.sequence) || Number(play.sequence) < 0
       || !nullableNumber(play.epa) || !flags
-      || FLAG_KEYS.some((key) => typeof flags[key] !== "boolean")) return null;
+      || !optionalNullableNumber(play.airYards) || !optionalNullableNumber(play.yardsAfterCatch)
+      || !optionalNullableNumber(play.homeWp) || !optionalNullableNumber(play.awayWp)
+      || !optionalNullableNumber(play.homeWpPost) || !optionalNullableNumber(play.awayWpPost)
+      || !optionalNullableNumber(play.wpa)
+      || FLAG_KEYS.some((key) => typeof flags[key] !== "boolean")
+      || OPTIONAL_FLAG_KEYS.some((key) => flags[key] !== undefined && typeof flags[key] !== "boolean")) return null;
     ids.add(play.playId);
   }
   return value as CenterPbpDto;
@@ -184,6 +201,13 @@ export async function fetchNflversePbp(gameId: string, options: { fetcher?: Fetc
       playType: play.playType ?? undefined,
       description: play.description ?? undefined,
       epa: play.epa ?? undefined,
+      airYards: play.airYards ?? undefined,
+      yardsAfterCatch: play.yardsAfterCatch ?? undefined,
+      homeWp: play.homeWp ?? undefined,
+      awayWp: play.awayWp ?? undefined,
+      homeWpPost: play.homeWpPost ?? undefined,
+      awayWpPost: play.awayWpPost ?? undefined,
+      wpa: play.wpa ?? undefined,
       flags: play.flags,
     })),
   };

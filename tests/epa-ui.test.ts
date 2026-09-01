@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { formatEpa } from "../src/analytics/nflverse/format";
+import { formatEpa, formatProbabilityPoints, formatWinProbability, formatYards } from "../src/analytics/nflverse/format";
 
 describe("per-play EPA presentation", () => {
   it("formats positive, negative, and true-zero values with an explicit EPA sign", () => {
@@ -8,6 +8,13 @@ describe("per-play EPA presentation", () => {
     expect(formatEpa(-0.31)).toBe("-0.31");
     expect(formatEpa(0)).toBe("+0.00");
     expect(formatEpa(Number.NaN)).toBeNull();
+  });
+
+  it("formats Air/YAC, current WP, and WPA units without changing their meaning", () => {
+    expect(formatYards(-2)).toBe("-2 yd");
+    expect(formatYards(8.5)).toBe("8.5 yd");
+    expect(formatWinProbability(0.684)).toBe("68%");
+    expect(formatProbabilityPoints(11.84)).toBe("+11.8 pts");
   });
 
   it("keeps EPA outside Play and gates every badge at the spoiler cursor", async () => {
@@ -20,9 +27,13 @@ describe("per-play EPA presentation", () => {
     expect(playInterface).not.toMatch(/\bepa\b/i);
     expect(app).toMatch(/visibleThrough: spoiler \? safeCursor : null/);
     expect(app).toMatch(/if \(visibleThrough !== null && play\.index > visibleThrough\) return null/);
-    expect(app).toMatch(/current-play-labels[\s\S]*EpaBadge play=\{current\}/);
+    expect(app).toMatch(/AdvancedAnalyticsPanel game=\{game\} play=\{current\}/);
     expect(app).toMatch(/PlayResult game=\{game\} play=\{revealed\}/);
+    expect(app).toMatch(/AdvancedAnalyticsPanel game=\{game\} play=\{revealed\}/);
+    expect(app).toMatch(/AFTER THIS PLAY/);
+    expect(app).toMatch(/NOT A ROUTE MAP/);
     expect(styles).toMatch(/\.epa-badge/);
+    expect(styles).toMatch(/\.advanced-analytics-panel/);
     expect(styles).toMatch(/@media \(max-width: 760px\)[\s\S]*\.play-result-primary/);
   });
 

@@ -7,7 +7,7 @@ import { planReplayFieldLayout, type ReplayLabelLane } from "./replayLayout";
 import { fetchRemoteGamebook, type RemoteLoadStage } from "./remoteGamebook";
 import { NflverseNotReadyError, fetchNflversePbp, requestNflversePbp, type NflverseGamePayload } from "./analytics/nflverse/loader";
 import { buildAnalyticsSidecar, type AnalyticsSidecar } from "./analytics/nflverse/sidecar";
-import { formatEpa } from "./analytics/nflverse/format";
+import { formatEpa, formatProbabilityPoints, formatWinProbability, formatYards } from "./analytics/nflverse/format";
 import type { Drive, GameData, Play, PlayParticipant, Player, TeamId } from "./types";
 
 type Mode = "watch" | "replay" | "explore";
@@ -173,7 +173,7 @@ function AdvancedAnalyticsControl({ enabled, available, status, onToggle }: { en
       : status === "preparing"
         ? "Preparing analytics…"
         : status === "ready"
-          ? "nflverse EPA ready"
+          ? "EPA, pass travel & win probability ready"
           : status === "unavailable"
             ? "Analytics are being prepared. Try again shortly."
             : "Load optional nflverse play analytics";
@@ -284,7 +284,7 @@ function Field({ game, play, variant = "situation", scoreUpdate }: { game: GameD
 function PlayResult({ game, play }: { game: GameData; play: Play }) {
   const view = replayFieldView(game, play);
   return <section className={`play-result-panel result-${view.resultState}`} data-result-state={view.resultState} aria-label={`Play result: ${view.resultLabel}`}>
-    <div className="play-result-primary"><span>PLAY RESULT</span><h3>{view.resultLabel}</h3>{view.resultDetail && <small>{view.resultDetail}</small>}<EpaBadge play={play} /></div>
+    <div className="play-result-primary"><span>PLAY RESULT</span><h3>{view.resultLabel}</h3>{view.resultDetail && <small>{view.resultDetail}</small>}</div>
     <div className="play-result-type"><b>{view.visualizationLabel}</b>{view.playDirection && <span>{view.playDirection}</span>}</div>
     {view.phases.length > 0 && <div className="replay-phases" aria-label="Scoring phases">{view.phases.map((phase) => <div key={`${phase.phase}-${phase.label}`} className={`phase-${phase.phase}`}><span>{phase.label}</span><b>{phase.result}</b>{phase.position && <em>→ {phase.position}</em>}</div>)}</div>}
     <div className={`field-spot-key mode-${view.mode}`}><span><i className="key-start" />{view.noMovement ? "OFFICIAL BALL" : view.mode === "field-goal" || view.visualization === "blocked-field-goal" ? "KICK ORIGIN" : "START"} · {view.startPosition ?? "NOT STATED"}</span>{view.possessionChange?.position && <span><i className="key-control" />{view.possessionChange.reason === "interception" ? "INT" : "RECOVERY"} · {view.possessionChange.position} · {view.possessionChange.teamId}</span>}{view.blockedKick?.recoveryPosition && !view.possessionChange?.position && <span><i className="key-control" />RECOVERY · {view.blockedKick.recoveryPosition} · {view.blockedKick.recoveryTeamId}</span>}{view.mode === "movement" && view.actionEndPosition && view.actionEndPosition !== view.displayFinalPosition && !view.possessionChange?.position && <span><i className="key-play-end" />PLAY END · {view.actionEndPosition}</span>}{!view.noMovement && <span><i className="key-official" />{view.mode === "touchdown" ? "SCORING END" : view.mode === "field-goal" ? "KICK TARGET" : "OFFICIAL"} · {view.displayFinalPosition ?? "NOT STATED"}</span>}</div>
@@ -299,10 +299,42 @@ function EpaBadge({ play, compact = false }: { play: Play; compact?: boolean }) 
   const { sidecar, visibleThrough } = useContext(AnalyticsContext);
   if (visibleThrough !== null && play.index > visibleThrough) return null;
   const analytics = sidecar?.byPlayId.get(play.id);
-  if (!analytics) return null;
+  if (!analytics || typeof analytics.epa !== "number") return null;
   const value = formatEpa(analytics.epa);
   if (!value) return null;
   return <span className={`epa-badge ${compact ? "compact" : ""}`} aria-label={`Expected points added ${value}`}><b>EPA</b> {value}</span>;
+}
+
+function AdvancedAnalyticsPanel({ game, play }: { game: GameData; play: Play }) {
+  const { sidecar, visibleThrough } = useContext(AnalyticsContext);
+  if (visibleThrough !== null && play.index > visibleThrough) return null;
+  const analytics = sidecar?.byPlayId.get(play.id);
+  if (!analytics) return null;
+  const away = game.teams.find((item) => item.homeAway === "visitor")!;
+  const home = game.teams.find((item) => item.homeAway === "home")!;
+  const epa = typeof analytics.epa === "number" ? formatEpa(analytics.epa) : null;
+  const air = typeof analytics.airYards === "number" ? formatYards(analytics.airYards) : null;
+  const yac = typeof analytics.yardsAfterCatch === "number" ? formatYards(analytics.yardsAfterCatch) : null;
+  const hasWp = typeof analytics.awayWinProbability === "number" && typeof analytics.homeWinProbability === "number";
+  const awayPercent = hasWp ? Math.round(analytics.awayWinProbability! * 100) : 0;
+  const homePercent = hasWp ? 100 - awayPercent : 0;
+  const wpa = typeof analytics.winProbabilityAddedPoints === "number" ? formatProbabilityPoints(analytics.winProbabilityAddedPoints) : null;
+  const changeTeam = analytics.winProbabilityChangeSide === "home" ? home : analytics.winProbabilityChangeSide === "away" ? away : null;
+  const replay = replayFieldView(game, play);
+  const splitTotal = (analytics.airYards ?? 0) + (analytics.yardsAfterCatch ?? 0);
+  const showSplit = analytics.completePass && typeof analytics.airYards === "number" && analytics.airYards >= 0
+    && typeof analytics.yardsAfterCatch === "number" && analytics.yardsAfterCatch >= 0 && splitTotal > 0
+    && typeof replay.displayMovementYards === "number" && Math.abs(splitTotal - replay.displayMovementYards) <= 1;
+  const airShare = showSplit ? (analytics.airYards! / splitTotal) * 100 : 0;
+  return <section className="advanced-analytics-panel" aria-label={`Advanced analytics for play ${play.index + 1}`} data-analytics-play={play.index}>
+    <div className="analytics-panel-head"><span>ADVANCED ANALYTICS</span><small>Aligned nflverse data · Gamebook remains primary</small></div>
+    <div className="analytics-panel-grid">
+      {(air || yac) && <div className="analytics-group analytics-pass"><h4>PASS TRAVEL</h4><dl>{air && <div><dt>AIR</dt><dd>{air}</dd></div>}{yac && <div><dt>YAC</dt><dd>{yac}</dd></div>}</dl></div>}
+      {epa && <div className="analytics-group analytics-value"><h4>PLAY VALUE</h4><dl><div><dt>EPA</dt><dd>{epa}</dd></div></dl></div>}
+      {hasWp && <div className="analytics-group analytics-wp"><h4>WIN PROBABILITY <small>AFTER THIS PLAY</small></h4><div className="wp-reading" aria-label={`${away.id} ${formatWinProbability(analytics.awayWinProbability!)}, ${home.id} ${formatWinProbability(analytics.homeWinProbability!)}`}><b>{away.id}<strong>{awayPercent}%</strong></b><div className="wp-track" style={{ "--away-wp": `${awayPercent}%`, "--away-color": away.color, "--home-color": home.color } as CSSProperties}><i /><span /></div><b><strong>{homePercent}%</strong>{home.id}</b></div>{wpa && <div className="wpa-reading"><span>THIS PLAY</span>{changeTeam ? <b><i style={{ background: changeTeam.color }} />{changeTeam.id} {wpa}</b> : <b>NO MATERIAL CHANGE · {wpa}</b>}</div>}</div>}
+    </div>
+    {showSplit && <div className="pass-yardage-split" aria-label={`Longitudinal pass split: air ${air}, yards after catch ${yac}`}><div><span>PASS YARDAGE · LONGITUDINAL SPLIT</span><small>NOT A ROUTE MAP</small></div><div className="split-track"><i className="split-air" style={{ width: `${airShare}%` }} /><i className="split-yac" style={{ width: `${100 - airShare}%` }} /><b style={{ left: `${airShare}%` }}><em>CATCH</em></b></div><div className="split-labels"><span>AIR {air}</span><span>YAC {yac}</span></div></div>}
+  </section>;
 }
 
 function PlayText({ play, language, compact = false }: { play: Play; language: DescriptionLanguage; compact?: boolean }) {
@@ -371,7 +403,7 @@ function WatchView({ game, cursor, spoiler, language, onCursor, onPlayer }: { ga
         <SituationHeader game={game} play={current} cursor={cursor} controls={<Locator game={game} cursor={cursor} onCursor={onCursor} />} />
         <div className="situation-card">
           <Field game={game} play={current} />
-          {current ? <div className="current-play"><div className="current-play-labels"><PlayTag kind={current.kind} /><EpaBadge play={current} /></div><PlayText play={current} language={language} /></div> : <div className="current-play waiting"><p>No future play or field position is shown. Use the locator to sync with the video.</p></div>}
+          {current ? <div className="current-play"><div className="current-play-labels"><PlayTag kind={current.kind} /></div><PlayText play={current} language={language} /><AdvancedAnalyticsPanel game={game} play={current} /></div> : <div className="current-play waiting"><p>No future play or field position is shown. Use the locator to sync with the video.</p></div>}
         </div>
         {drive && <div className="drive-ribbon"><div><span>CURRENT DRIVE</span><TeamMark game={game} teamId={drive.teamId} /></div><div><span>START</span><b>{drive.startPosition}</b></div><div><span>SO FAR</span><b>{drive.playIds.filter((id) => game.plays.find((play) => play.id === id)!.index <= cursor).length} plays</b></div><div><span>BOOK RESULT</span><b className={spoiler && cursor < drive.lastPlayIndex ? "redacted" : ""}>{spoiler && cursor < drive.lastPlayIndex ? "HIDDEN" : drive.result}</b></div></div>}
       </section>
@@ -423,6 +455,7 @@ function ReplayView({ game, cursor, language, summary, onNext, onBack, onPlayer 
         {summary ? <ReplayScoreSummary game={game} kind={summary} /> : <>{revealed ? <div className="replay-result">
           <Field game={game} play={revealed} variant="replay" scoreUpdate={scoreUpdate} />
           <PlayResult game={game} play={revealed} />
+          <AdvancedAnalyticsPanel game={game} play={revealed} />
           {completedDrive && <DriveSummary drive={completedDrive} game={game} play={revealed} next={next} />}
           <div className="supporting-play"><div className="supporting-head"><span>SUPPORTING TEXT · EVENT ORDER</span><div className="result-flags"><PlayTag kind={revealed.kind} />{revealed.noPlay && <span className="no-play">NO PLAY</span>}{revealed.details.events.some((event) => event.type === "touchdown") && <b>TD</b>}{revealed.details.events.some((event) => event.type === "fumble" || event.type === "interception") && <b className="danger">TURNOVER EVENT</b>}{revealed.details.penalties.length > 0 && <b className="penalty-flag">PENALTY</b>}</div></div><PlayText play={revealed} language={language} />{!!revealed.playerIds.length && <div className="player-links">{revealed.playerIds.slice(0, 4).map((id) => <button key={id} onClick={() => onPlayer(id)}>{id.slice(id.indexOf("-") + 1)}</button>)}</div>}</div>
         </div> : <div className="opening-card"><span>OPENING SNAP · RESULT LOCKED</span><Field game={game} play={next} variant="situation" /><p>Only the first pre-snap situation is visible. Press Space or → to reveal the play.</p></div>}
