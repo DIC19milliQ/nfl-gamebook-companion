@@ -9,14 +9,16 @@ const flags = {
   kickoff: false, punt: false, fieldGoal: false, extraPoint: false, timeout: false,
 };
 
-function dto(epa: number | null = -0.42) {
+function dto(epa: number | null = -0.42, playOverrides: Record<string, unknown> = {}, schemaVersion: 1 | 2 = 2) {
   const plays = [{
     gameId: nflverseGameId, playId: "100", quarter: 1, clock: "10:00", possessionTeam: "DAL",
-    down: 1, distance: 10, yardLine: "DAL 25", playType: "pass", description: "Pass complete.", sequence: 0, epa, flags,
+    down: 1, distance: 10, yardLine: "DAL 25", playType: "pass", description: "Pass complete.", sequence: 0, epa,
+    ...playOverrides,
+    flags: { ...flags, ...(playOverrides.flags as Record<string, unknown> | undefined) },
   }];
   const payloadHash = `sha256:${createHash("sha256").update(JSON.stringify({ plays })).digest("hex")}`;
   return {
-    schemaVersion: 1, centerGameId, nflverseGameId,
+    schemaVersion, centerGameId, nflverseGameId,
     provenance: {
       datasetVersion: "etag-v1", datasetHash: `sha256:${"a".repeat(64)}`,
       sourceUpdatedAt: "2025-09-06T00:00:00.000Z", fetchedAt: "2026-08-24T00:00:00.000Z",
@@ -43,6 +45,20 @@ describe("Center nflverse PBP loader", () => {
   it("preserves missing EPA instead of converting it to zero", async () => {
     const result = await fetchNflversePbp(centerGameId, { fetcher: vi.fn().mockResolvedValue(jsonResponse(dto(null))) });
     expect(result.plays[0].epa).toBeUndefined();
+  });
+
+  it("accepts additive v2 pass and win-probability fields while retaining v1 compatibility", async () => {
+    const analytics = await fetchNflversePbp(centerGameId, { fetcher: vi.fn().mockResolvedValue(jsonResponse(dto(0.7, {
+      airYards: -2, yardsAfterCatch: 8, homeWp: 0.44, awayWp: 0.56,
+      homeWpPost: 0.51, awayWpPost: 0.49, wpa: 0.07,
+      flags: { passAttempt: true, completePass: true },
+    }))) });
+    expect(analytics.plays[0]).toMatchObject({
+      airYards: -2, yardsAfterCatch: 8, homeWp: 0.44, awayWp: 0.56,
+      homeWpPost: 0.51, awayWpPost: 0.49, wpa: 0.07,
+      flags: expect.objectContaining({ passAttempt: true, completePass: true }),
+    });
+    expect(validateCenterPbpDto(dto(-0.2, {}, 1), centerGameId)).not.toBeNull();
   });
 
   it("distinguishes a cache miss from invalid DTO and payload tampering", async () => {

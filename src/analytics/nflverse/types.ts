@@ -32,6 +32,13 @@ export interface NflversePlay {
   description?: string;
   drive?: number;
   epa?: number;
+  airYards?: number;
+  yardsAfterCatch?: number;
+  homeWp?: number;
+  awayWp?: number;
+  homeWpPost?: number;
+  awayWpPost?: number;
+  wpa?: number;
   wp?: number;
   returnYards?: number;
   replayResult?: string;
@@ -48,6 +55,8 @@ export interface NflversePlay {
     fieldGoal: boolean;
     extraPoint: boolean;
     timeout: boolean;
+    passAttempt?: boolean;
+    completePass?: boolean;
     interceptionReturn?: boolean;
     fumble?: boolean;
     fumbleReturn?: boolean;
