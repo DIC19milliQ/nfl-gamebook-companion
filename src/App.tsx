@@ -140,12 +140,12 @@ function SpoilerToggle({ spoiler, onToggle }: { spoiler: boolean; onToggle: () =
   return <button className={`spoiler-toggle compact ${spoiler ? "on" : ""}`} onClick={onToggle} aria-pressed={spoiler} title={spoiler ? "Future results are hidden" : "Full game is visible"}><span className="toggle-eye">{spoiler ? "◉" : "○"}</span><b>SPOILER FREE</b><i /></button>;
 }
 
-function TopBar({ game, onReset, language, onLanguage, spoiler, onSpoiler }: { game: GameData; onReset: () => void; language: DescriptionLanguage; onLanguage: (language: DescriptionLanguage) => void; spoiler: boolean; onSpoiler: () => void }) {
+function TopBar({ game, onReset, language, onLanguage, spoiler, onSpoiler, analyticsEnabled, analyticsAvailable, analyticsStatus, onAnalytics }: { game: GameData; onReset: () => void; language: DescriptionLanguage; onLanguage: (language: DescriptionLanguage) => void; spoiler: boolean; onSpoiler: () => void; analyticsEnabled: boolean; analyticsAvailable: boolean; analyticsStatus: AnalyticsStatus; onAnalytics: () => void }) {
   return (
     <header className="topbar">
       <button className="wordmark" onClick={onReset}><span className="brand-box">GB</span><span>GAMEBOOK<br />COMPANION</span></button>
       <div className="game-title"><b>{game.game.title}</b><span>{game.game.date} · {game.game.location}</span></div>
-      <div className="topbar-actions"><SpoilerToggle spoiler={spoiler} onToggle={onSpoiler} /><LanguageToggle language={language} onLanguage={onLanguage} /><div className="source-badge"><span>✓</span><div><b>{game.validation.status === "complete" ? "PDF PARSED" : "PARTIAL PARSE"}</b><small>{game.source.pageCount} pages · local</small></div></div></div>
+      <div className="topbar-actions"><SpoilerToggle spoiler={spoiler} onToggle={onSpoiler} /><LanguageToggle language={language} onLanguage={onLanguage} /><AdvancedAnalyticsControl enabled={analyticsEnabled} available={analyticsAvailable} status={analyticsStatus} onToggle={onAnalytics} /><div className="source-badge"><span>✓</span><div><b>{game.validation.status === "complete" ? "PDF PARSED" : "PARTIAL PARSE"}</b><small>{game.source.pageCount} pages · local</small></div></div></div>
     </header>
   );
 }
@@ -177,10 +177,22 @@ function AdvancedAnalyticsControl({ enabled, available, status, onToggle }: { en
           : status === "unavailable"
             ? "Analytics are being prepared. Try again shortly."
             : "Load optional nflverse play analytics";
-  return <section className={`analytics-control ${enabled ? "on" : ""}`} aria-live="polite">
-    <div><b>ADVANCED ANALYTICS</b><span>{message}</span></div>
-    <button type="button" role="switch" aria-checked={enabled} disabled={!available} onClick={onToggle}><span>{enabled ? "ON" : "OFF"}</span><i /></button>
-  </section>;
+  const statusLabel = !available
+    ? "N/A"
+    : !enabled
+      ? "OFF"
+      : status === "checking"
+        ? "CHECKING…"
+        : status === "preparing"
+          ? "PREPARING…"
+          : status === "ready"
+            ? "READY"
+            : status === "unavailable"
+              ? "WAITING"
+              : "ON";
+  return <button className={`analytics-control ${enabled ? "on" : ""}`} type="button" role="switch" aria-checked={enabled} aria-label={`Analytics ${statusLabel}. ${message}`} title={message} disabled={!available} onClick={onToggle}>
+    <span aria-live="polite"><b>ANALYTICS</b><small>{statusLabel}</small></span><i />
+  </button>;
 }
 
 function SituationHeader({ game, play, cursor, controls, showDirection = true }: { game: GameData; play?: Play; cursor: number; controls?: ReactNode; showDirection?: boolean }) {
@@ -321,12 +333,6 @@ function AdvancedAnalyticsPanel({ game, play }: { game: GameData; play: Play }) 
   const homePercent = hasWp ? 100 - awayPercent : 0;
   const wpa = typeof analytics.winProbabilityAddedPoints === "number" ? formatProbabilityPoints(analytics.winProbabilityAddedPoints) : null;
   const changeTeam = analytics.winProbabilityChangeSide === "home" ? home : analytics.winProbabilityChangeSide === "away" ? away : null;
-  const replay = replayFieldView(game, play);
-  const splitTotal = (analytics.airYards ?? 0) + (analytics.yardsAfterCatch ?? 0);
-  const showSplit = analytics.completePass && typeof analytics.airYards === "number" && analytics.airYards >= 0
-    && typeof analytics.yardsAfterCatch === "number" && analytics.yardsAfterCatch >= 0 && splitTotal > 0
-    && typeof replay.displayMovementYards === "number" && Math.abs(splitTotal - replay.displayMovementYards) <= 1;
-  const airShare = showSplit ? (analytics.airYards! / splitTotal) * 100 : 0;
   return <section className="advanced-analytics-panel" aria-label={`Advanced analytics for play ${play.index + 1}`} data-analytics-play={play.index}>
     <div className="analytics-panel-head"><span>ADVANCED ANALYTICS</span><small>Aligned nflverse data · Gamebook remains primary</small></div>
     <div className="analytics-panel-grid">
@@ -334,7 +340,6 @@ function AdvancedAnalyticsPanel({ game, play }: { game: GameData; play: Play }) 
       {epa && <div className="analytics-group analytics-value"><h4>PLAY VALUE</h4><dl><div><dt>EPA</dt><dd>{epa}</dd></div></dl></div>}
       {hasWp && <div className="analytics-group analytics-wp"><h4>WIN PROBABILITY <small>AFTER THIS PLAY</small></h4><div className="wp-reading" aria-label={`${away.id} ${formatWinProbability(analytics.awayWinProbability!)}, ${home.id} ${formatWinProbability(analytics.homeWinProbability!)}`}><b>{away.id}<strong>{awayPercent}%</strong></b><div className="wp-track" style={{ "--away-wp": `${awayPercent}%`, "--away-color": away.color, "--home-color": home.color } as CSSProperties}><i /><span /></div><b><strong>{homePercent}%</strong>{home.id}</b></div>{wpa && <div className="wpa-reading"><span>THIS PLAY</span>{changeTeam ? <b><i style={{ background: changeTeam.color }} />{changeTeam.id} {wpa}</b> : <b>NO MATERIAL CHANGE · {wpa}</b>}</div>}</div>}
     </div>
-    {showSplit && <div className="pass-yardage-split" aria-label={`Longitudinal pass split: air ${air}, yards after catch ${yac}`}><div><span>PASS YARDAGE · LONGITUDINAL SPLIT</span><small>NOT A ROUTE MAP</small></div><div className="split-track"><i className="split-air" style={{ width: `${airShare}%` }} /><i className="split-yac" style={{ width: `${100 - airShare}%` }} /><b style={{ left: `${airShare}%` }}><em>CATCH</em></b></div><div className="split-labels"><span>AIR {air}</span><span>YAC {yac}</span></div></div>}
   </section>;
 }
 
@@ -766,5 +771,5 @@ export default function App() {
   const analyticsContext = useMemo(() => ({ sidecar: advancedAnalytics ? analytics : null, visibleThrough: spoiler ? safeCursor : null }), [advancedAnalytics, analytics, safeCursor, spoiler]);
   if (loading) return <LoadingScreen progress={progress} label={loadingLabel} />;
   if (!game) return <Landing onFile={loadFile} error={error} />;
-  return <AnalyticsContext.Provider value={analyticsContext}><div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><AdvancedAnalyticsControl enabled={advancedAnalytics} available={Boolean(remoteGameId)} status={analyticsStatus} onToggle={() => setAdvancedAnalytics((value) => !value)} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No PDF upload or permanent storage</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div></AnalyticsContext.Provider>;
+  return <AnalyticsContext.Provider value={analyticsContext}><div className="app-shell"><TopBar game={game} onReset={reset} language={language} onLanguage={setLanguage} spoiler={spoiler} onSpoiler={() => setSpoiler((value) => !value)} analyticsEnabled={advancedAnalytics} analyticsAvailable={Boolean(remoteGameId)} analyticsStatus={analyticsStatus} onAnalytics={() => setAdvancedAnalytics((value) => !value)} /><ModeNav mode={mode} onMode={setMode} /><main className="app-main">{game.warnings.length > 0 && <div className="warning-banner"><b>{game.validation.status === "partial" ? "PARTIAL PARSE" : "PARSER NOTE"}</b>{game.warnings.join(" ")}</div>}{mode === "watch" && <WatchView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onCursor={setCursor} onPlayer={setPlayerId} />}{mode === "replay" && <ReplayView game={game} cursor={safeCursor} language={language} summary={replaySummary} onNext={replayNext} onBack={replayBack} onPlayer={setPlayerId} />}{mode === "explore" && <ExploreView game={game} cursor={safeCursor} spoiler={spoiler} language={language} onPlayer={setPlayerId} />}</main><footer className="app-footer"><span>Parsed locally from {game.source.fileName}</span><span>No PDF upload or permanent storage</span></footer>{playerId && <PlayerDrawer game={game} playerId={playerId} cursor={safeCursor} spoiler={spoiler} language={language} onClose={() => setPlayerId("")} />}</div></AnalyticsContext.Provider>;
 }
