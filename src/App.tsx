@@ -315,6 +315,7 @@ function AdvancedAnalyticsPanel({ game, play }: { game: GameData; play: Play }) 
   const epa = typeof analytics.epa === "number" ? formatEpa(analytics.epa) : null;
   const air = typeof analytics.airYards === "number" ? formatYards(analytics.airYards) : null;
   const yac = typeof analytics.yardsAfterCatch === "number" ? formatYards(analytics.yardsAfterCatch) : null;
+  const hasPassTravel = Boolean(air || yac);
   const hasWp = typeof analytics.awayWinProbability === "number" && typeof analytics.homeWinProbability === "number";
   const awayPercent = hasWp ? Math.round(analytics.awayWinProbability! * 100) : 0;
   const homePercent = hasWp ? 100 - awayPercent : 0;
@@ -329,7 +330,7 @@ function AdvancedAnalyticsPanel({ game, play }: { game: GameData; play: Play }) 
   return <section className="advanced-analytics-panel" aria-label={`Advanced analytics for play ${play.index + 1}`} data-analytics-play={play.index}>
     <div className="analytics-panel-head"><span>ADVANCED ANALYTICS</span><small>Aligned nflverse data · Gamebook remains primary</small></div>
     <div className="analytics-panel-grid">
-      {(air || yac) && <div className="analytics-group analytics-pass"><h4>PASS TRAVEL</h4><dl>{air && <div><dt>AIR</dt><dd>{air}</dd></div>}{yac && <div><dt>YAC</dt><dd>{yac}</dd></div>}</dl></div>}
+      <div className={`analytics-group analytics-pass${hasPassTravel ? "" : " analytics-pass-empty"}`} aria-hidden={!hasPassTravel}>{hasPassTravel && <><h4>PASS TRAVEL</h4><dl>{air && <div><dt>AIR</dt><dd>{air}</dd></div>}{yac && <div><dt>YAC</dt><dd>{yac}</dd></div>}</dl></>}</div>
       {epa && <div className="analytics-group analytics-value"><h4>PLAY VALUE</h4><dl><div><dt>EPA</dt><dd>{epa}</dd></div></dl></div>}
       {hasWp && <div className="analytics-group analytics-wp"><h4>WIN PROBABILITY <small>AFTER THIS PLAY</small></h4><div className="wp-reading" aria-label={`${away.id} ${formatWinProbability(analytics.awayWinProbability!)}, ${home.id} ${formatWinProbability(analytics.homeWinProbability!)}`}><b>{away.id}<strong>{awayPercent}%</strong></b><div className="wp-track" style={{ "--away-wp": `${awayPercent}%`, "--away-color": away.color, "--home-color": home.color } as CSSProperties}><i /><span /></div><b><strong>{homePercent}%</strong>{home.id}</b></div>{wpa && <div className="wpa-reading"><span>THIS PLAY</span>{changeTeam ? <b><i style={{ background: changeTeam.color }} />{changeTeam.id} {wpa}</b> : <b>NO MATERIAL CHANGE · {wpa}</b>}</div>}</div>}
     </div>

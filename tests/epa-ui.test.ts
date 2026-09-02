@@ -37,6 +37,22 @@ describe("per-play EPA presentation", () => {
     expect(styles).toMatch(/@media \(max-width: 760px\)[\s\S]*\.play-result-primary/);
   });
 
+  it("keeps desktop analytics columns fixed and uses a stable mobile reading order", async () => {
+    const [app, styles] = await Promise.all([
+      readFile(new URL("../src/App.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../src/styles.css", import.meta.url), "utf8"),
+    ]);
+    expect(app).toMatch(/analytics-pass-empty/);
+    expect(app).toMatch(/aria-hidden=\{!hasPassTravel\}/);
+    expect(styles).toMatch(/\.analytics-pass \{ grid-column: 1; \}/);
+    expect(styles).toMatch(/\.analytics-value \{ grid-column: 2; \}/);
+    expect(styles).toMatch(/\.analytics-wp \{ grid-column: 3;/);
+    expect(styles).toMatch(/@media \(max-width: 760px\)[\s\S]*\.analytics-value \{ grid-column: 1; order: 1;/);
+    expect(styles).toMatch(/@media \(max-width: 760px\)[\s\S]*\.analytics-wp \{ grid-column: 1; order: 2;/);
+    expect(styles).toMatch(/@media \(max-width: 760px\)[\s\S]*\.analytics-pass \{ grid-column: 1; order: 3;/);
+    expect(styles).toMatch(/\.analytics-pass-empty \{ display: none; \}/);
+  });
+
   it("defaults analytics off, makes no PBP request on Gamebook load, and clears it per game", async () => {
     const app = await readFile(new URL("../src/App.tsx", import.meta.url), "utf8");
     const autoLoad = app.slice(app.indexOf("if (!autoGameId || autoLoadStarted.current)"), app.indexOf("}, [autoGameId, loadBytes]);"));
