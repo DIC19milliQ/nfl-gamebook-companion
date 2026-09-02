@@ -31,10 +31,17 @@ describe("per-play EPA presentation", () => {
     expect(app).toMatch(/PlayResult game=\{game\} play=\{revealed\}/);
     expect(app).toMatch(/AdvancedAnalyticsPanel game=\{game\} play=\{revealed\}/);
     expect(app).toMatch(/AFTER THIS PLAY/);
-    expect(app).toMatch(/NOT A ROUTE MAP/);
+    expect(app).not.toMatch(/PASS YARDAGE · LONGITUDINAL SPLIT|NOT A ROUTE MAP|pass-yardage-split/);
+    expect(styles).not.toMatch(/\.pass-yardage-split|\.split-track|\.split-labels/);
     expect(styles).toMatch(/\.epa-badge/);
     expect(styles).toMatch(/\.advanced-analytics-panel/);
     expect(styles).toMatch(/@media \(max-width: 760px\)[\s\S]*\.play-result-primary/);
+    expect(app).toMatch(/topbar-actions[\s\S]*AdvancedAnalyticsControl/);
+    expect(app).toMatch(/<b>ANALYTICS<\/b><small>\{statusLabel\}<\/small>/);
+    expect(app).toMatch(/status === "preparing"[\s\S]*"PREPARING…"/);
+    expect(app).toMatch(/!available[\s\S]*"N\/A"/);
+    expect(app).toMatch(/disabled=\{!available\}/);
+    expect(app).not.toMatch(/<ModeNav[^\n]+<AdvancedAnalyticsControl/);
   });
 
   it("keeps desktop analytics columns fixed and uses a stable mobile reading order", async () => {
